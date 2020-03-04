@@ -13,12 +13,12 @@ class Transaction:
         pass
     
     @classmethod
-    def new(self, sender, receiver, amount, comment):
-        self.sender = sender
-        self.receiver = receiver
-        self.amount = amount
-        self.comment = comment
-        self.signature = ""
+    def new(cls, sender, receiver, amount, comment):
+        cls.sender = sender
+        cls.receiver = receiver
+        cls.amount = amount
+        cls.comment = comment
+        cls.signature = ""
         
     def serialize(self):
         # Serializes object to CBOR or JSON string
@@ -30,7 +30,7 @@ class Transaction:
         return json.dumps(d)
         
     @classmethod
-    def deserialize(self, data):
+    def deserialize(cls, data):
         d = json.loads(data)
         d['sender'] = d['sender'].encode('ascii')
         d['receiver'] = d['receiver'].encode('ascii')

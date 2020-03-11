@@ -9,16 +9,20 @@ import base64
 
 class Transaction:
     
-    def __init__(self):
+    def __init__(self,sender, receiver, amount, comment="",signature=None):
+        self._sender = sender
+        self._receiver = receiver
+        self._amount = amount
+        self._comment = comment
+        self._signature = signature
         pass
     
     @classmethod
-    def new(cls, sender, receiver, amount, comment):
-        cls.sender = sender
-        cls.receiver = receiver
-        cls.amount = amount
-        cls.comment = comment
-        cls.signature = ""
+    def new(cls, privkey, sender, receiver, amount, comment):
+        new_trans = cls(sender,receiver,amount,comment)
+        # signing the transaction with private key
+        new_trans.sign(privkey)
+        return new_trans
         
     def serialize(self):
         # Serializes object to CBOR or JSON string

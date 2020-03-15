@@ -42,3 +42,7 @@ class Block:
 
     def __eq__(self, other):
         return self.index == other.index and self.transactions == other.transactions and self.timestamp == other.timestamp and self.previous_hash == other.previous_hash
+
+
+if __name__ == "__main__":
+    pass

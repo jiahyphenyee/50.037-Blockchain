@@ -12,6 +12,8 @@ from ecdsa import SigningKey
 import ecdsa
 import base64
 import random
+from .merkle_tree import MerkleTree, verify_proof
+
 
 def H(n, msg):
     m = hashlib.sha512(msg.encode('utf-8')).digest()

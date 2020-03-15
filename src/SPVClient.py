@@ -4,7 +4,6 @@ import time
 import random
 import os.path
 
-
 from src.algorithms import *
 from src.node import Node, Listener
 from src.merkle_tree import verify_proof
@@ -107,7 +106,7 @@ class SPVClient(Node):
 
 if __name__ == "__main__":
     SPVClient.new(("localhost", 6666))
-        
+
 
 
 

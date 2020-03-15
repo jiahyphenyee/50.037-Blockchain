@@ -1,14 +1,13 @@
 import copy
+import json
 import random
 import threading
-import json
 from src.block import Block
-from Transactions import Transaction
-from src.blockchain import Blockchain
+from src.transaction import Transaction
+#from src.blockchain import Blockchain
 from src.algorithms import *
-
-
 from src.node import Node, Listener
+
 """
 Design and implement a Miner class realizing miner's functionalities. Then, implement a simple simulator with miners running Nakamoto consensus and making transactions:
 
@@ -23,125 +22,60 @@ Design and implement a Miner class realizing miner's functionalities. Then, impl
 """
 
 
-"""
-    As a full blockchain node:
-        relies on network to receive updates about new blocks of transactions, 
-        which then verifies and incorporates into its local copy of the blockchain.
-    1. connect to peers
-    2. construct a complete blockchain
-      - for a brand-new node, it only knows one block, the genesis block, 
-        which is statically embedded in the client software
-      - starting from genesis block, the new node will have to download hundreds 
-        of thousands of blocks to synchronize with the network
-"""
-
-
 class MinerListener(Listener):
     """Miner's Listener class"""
 
-    def handle_client_data(self, data, client_sock):
-        """Handle client data based on protocol indicator"""
-        prot = data[0].lower()
-        if prot == "n":
-            # Sent by the central server when a new node joins
-            peer = json.loads(data[1:])
-            self._worker.add_peer(peer)
-            client_sock.close()
-        elif prot == "b":
-            self._handle_block(data, client_sock)
-        elif prot == "t":
-            self._handle_transaction(data, client_sock)
-        elif prot == "r":
-            self._handle_transaction_proof(data, client_sock)
-        elif prot == "x":
-            self._handle_balance(data, client_sock)
-        elif prot == "h":
-            for header in self._worker.get_blk_headers:
-                self.broadcast_message("h" + json.dumps(header))
-        else:
-            # either header or wrong message format
-            client_sock.close()
+    def handle_by_msg_type(self, data, tcp_client):
+        """Handle client data based on msg_type"""
+        msg_type = data[0].lower()
 
-    def _handle_block(self, data, client_sock):
-        """Receive new block"""
-        blk_json = json.loads(data[1:])["blk_json"]
-        if client_sock:
-            client_sock.close()
-        # Stop mining if new block is received
-        self._worker.stop_mine.set()
-        self._worker.block_queue.put(blk_json)
+        if msg_type == "b":  # new block
+            blk_json = json.loads(data[1:])["blk_json"]
+            self.node.blockchain.setMinable(False)  # Stop mining
+            self.node.blockchain.add_block(Block.deserialize(blk_json))
 
-    def _handle_transaction(self, data, client_sock):
-        """Receive new transaction"""
-        tx_json = json.loads(data[1:])["tx_json"]
-        if client_sock:
-            client_sock.close()
-        if self._worker.all_tx_lock.acquire(False):
-            self._worker.add_transaction(tx_json)
-            self._worker.all_tx_lock.release()
-        else:
-            self._worker.tx_queue.put(tx_json)
+        elif msg_type == "t":  # new transaction
+            tx_json = json.loads(data[1:])["tx_json"]
+            self.node.blockchain.add_new_transaction(Transaction.deserialize(tx_json))
 
-    def _handle_transaction_proof(self, data, client_sock):
-        """Process request for transaction proof"""
-        tx_hash = json.loads(data[1:])["tx_hash"]
-        tup = self._worker.get_transaction_proof(tx_hash)
-        if tup is None:
+        elif msg_type == "r":  # request for transaction proof
+            tx_hash = json.loads(data[1:])["tx_hash"]
+            proof = self.node.get_transaction_proof(tx_hash)
+            if proof is None:
+                msg = "nil"
+            else:
+                msg = json.dumps({
+                    "blk_hash": proof[0],
+                    "merkle_path": proof[1],
+                })
+            tcp_client.sendall(msg.encode())
+
+        elif msg_type == "h":  # request for headers by spvclient
             msg = json.dumps({
-                "blk_hash": None,
-                "proof": None,
-                "last_blk_hash": None
+                "headers": self.node.get_blk_header()
             })
-        else:
-            msg = json.dumps({
-                "blk_hash": tup[0],
-                "proof": tup[1],
-                "last_blk_hash": tup[2]
-            })
-        client_sock.sendall(msg.encode())
-        client_sock.close()
+            tcp_client.sendall(msg.encode)
 
-    def _handle_balance(self, data, client_sock):
-        pubkey = json.loads(data[1:])["identifier"]
-        bal = self._worker.get_balance(pubkey)
-        client_sock.sendall(str(bal).encode())
-        client_sock.close()
+        tcp_client.close()
 
-class Miner:
-    MAX_TX = 10
+
+class Miner(Node):
 
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
         super().__init__(privkey, pubkey, address, listener)
-        self._balance = {}
-        self._all_transactions = set()
-        self._blockchain = Blockchain()
-        # locks
-        self.blockchain_lock = threading.RLock()
-        self.transaction_all_lock = threading.RLock
-        self.transaction_added_lock = threading.RLock()
-        self.balance_lock = threading.RLock()
-        self.stop_mine = threading.Event()
+        self.account_balance = {}
+        #self.blockchain = Blockchain()
 
     @classmethod
-    def new(cls, ip_address):
+    def new(cls, address):
         """Create new Miner instance"""
         signing_key = ecdsa.SigningKey.generate()
         verifying_key = signing_key.get_verifying_key()
         privkey = signing_key.to_string().hex()
         pubkey = verifying_key.to_string().hex()
-        return cls(privkey, pubkey, ip_address)
+        return cls(privkey, pubkey, address)
 
-    @property
-    def all_transactions(self):
-        """Copy of all transactions"""
-        # self._update()
-        with self.transaction_all_lock:
-            tx_copy = copy.deepcopy(self._all_transactions)
-        return tx_copy
-
-    """ ====================================================
-        ===================== Inquiry ======================
-        ===================================================="""
+    """ inquiry """
 
     def get_transaction_proof(self, tx_hash):
         """Get proof of transaction given transaction hash"""
@@ -159,158 +93,80 @@ class Miner:
         """Get balance given identifier ie. pubkey"""
         self._update()
         with self.balance_lock:
-            if identifier not in self._balance:
+            if identifier not in self.account_balance:
                 return 0
-            return self._balance[identifier]
+            return self.account_balance[identifier]
 
-    def get_blk_headers(self):
-        return self._blockchain.get
+    def get_blk_headers(self, prev_hash):
+        """Get headers of blocks that continues from prev_hash block. This method is to serve SPVClient"""
+        blk_headers = {}
+        for block in self.blockchain.get_blks(prev_hash):
+            blk_headers[block.compute_hash()] = block.header
 
+        return blk_headers
 
-    """ ====================================================
-        =================== Transaction ====================
-        ===================================================="""
+    """ Transactions """
 
-    def create_transaction(self, receiver, amount, comment=""):
+    def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        new_transaction = Transaction.new(self.privkey, self.pubkey, receiver, amount, comment)
-        transaction_json = new_transaction.to_json()
-        self.add_transaction(transaction_json)
-        self.broadcast_message(json.dumps({"tx_json": transaction_json}))
-        return new_transaction
+        tx = Transaction.new(self.privkey, self.pubkey, receiver, amount, comment)
+        tx_json = tx.serialize()
+        print(self.address, " made a new transaction")
+        self.add_transaction(tx)
+        self.broadcast_message(json.dumps({"tx_json": tx_json}))
+
+        return tx
 
     def add_transaction(self, transaction_json):
-        """Add transaction to the pool of transactions"""
-        transaction = Transaction.from_json(transaction_json)
-        if not transaction.verify():
+        """Add transaction to the pool of unconfirmed transactions"""
+        transaction = Transaction.deserialize(transaction_json)
+        if not transaction.validate():
             raise Exception("New transaction failed signature verification.")
-        with self.all_tx_lock:
-            if transaction_json in self._all_transactions:
-                print(f"{self.name} - Transaction already exist in pool.")
-                return
-            self._all_transactions.add(transaction_json)
+        self.blockchain.add_new_transaction(transaction)
 
-    """ ====================================================
-        ====================== MINING ======================
-        ===================================================="""
+    """ Mining """
 
-    def mine(self, prev_hash=None):
-        # get the block
-        prev_blk = None if prev_hash is None else self._blockchain.hash_block_map[prev_hash]
-        last_blk = self._update(prev_blk)
-        pending_tx = self._get_tx_pool()
-        tx_collection = self._collect_transactions(pending_tx)
-        block = self._mine_new_block(last_blk.header, tx_collection)
-        if block is not None:
-            blk_json = block.to_json()
+    def mine(self):
+        coinbase_tx = Transaction.new(
+            sender=self.pubkey,
+            receiver=self.pubkey,
+            amount=100,
+            comment="Coinbase",
+            key=self.privkey,
 
-            # Add block to blockchain (thread safe)
-            block = Block.from_json(blk_json)
-            with self.blockchain_lock:
-                self._blockchain.add(block)
-            print(f"{self.__class__.__name__} {self.name} created a block.")
-
-            # Broadcast block and the header.
-            self._broadcast_block(block)
-            # Remove gathered transactions from pool and them to added pile
-            with self.added_tx_lock:
-                self._added_transactions |= set(tx_collection)
-        self._update()
-        return block
-
-    def _mine_new_block(self, last_blk_hdr, gathered_tx):
-        # Mine new block
-        # TODO: specify the hash used
-        prev_hash = hash(last_blk_hdr)
-        block = Block.new(prev_hash, gathered_tx, self.stop_mine)
-        if block is None:
-            # Mining stopped because a new block is received
+        )
+        if not self.check_final_balance(self.blockchain.unconfirmed_transactions):
             return None
+
+        block = self.blockchain.mine(coinbase_tx)
+
+        if block is not None:
+            blk_json = block.serialize()
+            self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
+            self.broadcast_message("h" + json.dumps(block.header))
+
+        print(self.address, " created a block.")
+
         return block
 
-    def _collect_transactions(self, tx_pool):
-        # Get a set of random transactions from pending transactions
-        self.transaction_all_lock.acquire()
-        self.transaction_added_lock.acquire()
-        try:
-            # Put in coinbase transaction
-            coinbase_tx = Transaction.new(
-                self.privkey,
-                self.pubkey,
-                self.pubkey,
-                Block.REWARD,  # 100 SUTD Coins
-                "Coinbase"
-            )
-            tx_collection = [coinbase_tx.to_json()]
-            # No transactions to process, return coinbase transaction only
-            if not tx_pool:
-                return tx_collection
-            num_tx = min(Miner.MAX_NUM_TX, len(tx_pool))
-            while True:
-                if num_tx <= 0:
-                    return tx_collection
-                # choose randomly from the pool transactions
-                trans_sample = random.sample(tx_pool, num_tx)
-                num_tx -= 1
-                if self._check_transactions_balance(trans_sample):
-                    break
-            tx_collection.extend(trans_sample)
-        finally:
-            self.transaction_added_lock.release()
-            self.transaction_all_lock.release()
-        return tx_collection
-
-    def _check_transactions_balance(self, transactions):
+    def check_final_balance(self, transactions):
         """Check balance state if transactions were applied"""
-        self.balance_lock.acquire()
-        try:
-            balance = copy.deepcopy(self._balance)
-        finally:
-            self.balance_lock.release()
         for tx_json in transactions:
             recv_tx = Transaction.from_json(tx_json)
             # Sender must exist so if it doesn't, return false
-            if recv_tx.sender not in balance:
+            if recv_tx.sender not in self.balance:
                 return False
             # Create new account for receiver if it doesn't exist
-            if recv_tx.receiver not in balance:
-                balance[recv_tx.receiver] = 0
-            balance[recv_tx.sender] -= recv_tx.amount
-            balance[recv_tx.receiver] += recv_tx.amount
+            if recv_tx.receiver not in self.balance:
+                self.balance[recv_tx.receiver] = 0
+            self.balance[recv_tx.sender] -= recv_tx.amount
+            self.balance[recv_tx.receiver] += recv_tx.amount
             # Negative balance, return false
-            if balance[recv_tx.sender] < 0 \
-                    or balance[recv_tx.receiver] < 0:
+            if self.balance[recv_tx.sender] < 0 or self.balance[recv_tx.receiver] < 0:
+                print("Negative balance can exist!")
                 return False
         return True
 
-    def _broadcast_block(self, block):
-        # b is only taken by miners while h is taken by spv_clients
-        blk_json = block.to_json()
-        self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
-        self.broadcast_message("h" + json.dumps(block.header))
 
-    """ ====================================================
-        ====================== Update ======================
-        ===================================================="""
-
-    def _update(self, last_blk=None):
-        """Update miner's blockchain, balance state and transactions"""
-        self._clear_queue()
-        self.blockchain_lock.acquire()
-        self.transaction_added_lock.acquire()
-        self.balance_lock.acquire()
-        try:
-            # Resolve blockchain to get last block
-            if last_blk is None:
-                last_blk = self._blockchain.resolve()
-            # TODO:Update added transactions with transactions in blockchain
-            #blockchain_tx = self._blockchain.get_transactions_by_fork(last_blk)
-            #self._added_transactions = set(blockchain_tx)
-            # TODO:Update balance state with latest
-            #self._balance = self._blockchain.get_balance_by_fork(last_blk)
-        finally:
-            self.blockchain_lock.release()
-            self.transaction_added_lock.release()
-            self.balance_lock.release()
-        self.stop_mine.clear()
-        return last_blk
+if __name__ == "__main__":
+    Miner.new(("localhost",6666))

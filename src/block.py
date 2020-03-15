@@ -1,8 +1,9 @@
 
-from .transaction import MerkleTree
+from .merkle_tree import MerkleTree
 from hashlib import sha256
 import json
 import random
+
 
 class Block:
     def __init__(self, blk_height, transactions, timestamp, previous_hash,):
@@ -14,7 +15,7 @@ class Block:
         :param previous_hash: Hash of the previous block in the chain which this block is part of.
         """
         self.blk_height = blk_height
-        self.root = MerkleTree(transactions) if len(transactions) != 0 else None
+        self.merkle = MerkleTree(transactions) if len(transactions) != 0 else None
         if self.merkle.__eq__(None):
             self.transactions = None
         else:
@@ -26,7 +27,7 @@ class Block:
     def header(self):
         return {
             "prev_hash": self.previous_hash,
-            "root": self.root,
+            "root": self.transactions, #hash of root
             "timestamp": self.timestamp,
             "nonce": self.nonce,
         }

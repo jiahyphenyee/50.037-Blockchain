@@ -1,10 +1,11 @@
 import copy
 import random
 import threading
-from Block import Block
+import json
+from src.block import Block
 from Transactions import Transaction
 from src.blockchain import Blockchain
-from algorithms import *
+from src.algorithms import *
 
 
 from src.node import Node, Listener

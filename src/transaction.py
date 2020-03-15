@@ -9,6 +9,7 @@ import json
 import sys
 import timeit
 from ecdsa import SigningKey
+from .merkle_tree import *
 import ecdsa
 import base64
 import random

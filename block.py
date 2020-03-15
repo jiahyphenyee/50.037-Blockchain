@@ -1,5 +1,5 @@
 
-from .merkle_tree import MerkleTree
+from merkle_tree import MerkleTree
 from hashlib import sha256
 import json
 import random

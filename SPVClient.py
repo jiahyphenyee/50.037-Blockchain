@@ -1,13 +1,8 @@
-import json
-import sys
-import time
-import random
-import os.path
 
-from src.algorithms import *
-from src.node import Node, Listener
-from src.merkle_tree import verify_proof
-from src.transaction import Transaction
+from algorithms import *
+from node import Node, Listener
+from merkle_tree import verify_proof
+from transaction import Transaction
 
 '''
 Design and implement an SPVClient class. SPV clients should implement a simple SPV logic, i.e., they should:

@@ -1,12 +1,9 @@
 import copy
-import json
-import random
-import threading
-from src.block import Block
-from src.transaction import Transaction
-#from src.blockchain import Blockchain
-from src.algorithms import *
-from src.node import Node, Listener
+from block import Block
+from transaction import Transaction
+from blockchain import Blockchain
+from algorithms import *
+from node import Node, Listener
 
 """
 Design and implement a Miner class realizing miner's functionalities. Then, implement a simple simulator with miners running Nakamoto consensus and making transactions:
@@ -64,7 +61,7 @@ class Miner(Node):
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
         super().__init__(privkey, pubkey, address, listener)
         self.account_balance = {}
-        #self.blockchain = Blockchain()
+        # self.blockchain = Blockchain()
 
     @classmethod
     def new(cls, address):
@@ -75,27 +72,23 @@ class Miner(Node):
         pubkey = verifying_key.to_string().hex()
         return cls(privkey, pubkey, address)
 
+    def update(self):
+        return
+
     """ inquiry """
 
     def get_transaction_proof(self, tx_hash):
         """Get proof of transaction given transaction hash"""
-        self._update()
-        with self.blockchain_lock:
-            last_blk = self._blockchain.resolve()
-            res = self._blockchain.get_transaction_proof_in_fork(
-                tx_hash, last_blk)
-        if res is None:
-            return None
-        last_blk_hash = hash(last_blk.header)
-        return res[0], res[1], last_blk_hash
+        # ask the blockchain to search each block to obtain possible proof from merkle tree
+        proof = self.blockchain.get_proof(tx_hash)
+        return proof
 
     def get_balance(self, identifier):
         """Get balance given identifier ie. pubkey"""
-        self._update()
-        with self.balance_lock:
-            if identifier not in self.account_balance:
-                return 0
-            return self.account_balance[identifier]
+        self.update()
+        if identifier not in self.account_balance:
+            return 0
+        return self.account_balance[identifier]
 
     def get_blk_headers(self, prev_hash):
         """Get headers of blocks that continues from prev_hash block. This method is to serve SPVClient"""
@@ -113,8 +106,8 @@ class Miner(Node):
         tx_json = tx.serialize()
         print(self.address, " made a new transaction")
         self.add_transaction(tx)
-        self.broadcast_message(json.dumps({"tx_json": tx_json}))
-
+        msg = "t" + json.dumps({"tx_json": tx_json})
+        self.broadcast_message(msg)
         return tx
 
     def add_transaction(self, transaction_json):
@@ -127,6 +120,7 @@ class Miner(Node):
     """ Mining """
 
     def mine(self):
+        # need to include this transaction so miner can obtain reward
         coinbase_tx = Transaction.new(
             sender=self.pubkey,
             receiver=self.pubkey,
@@ -135,38 +129,47 @@ class Miner(Node):
             key=self.privkey,
 
         )
-        if not self.check_final_balance(self.blockchain.unconfirmed_transactions):
-            return None
+        # if not self.check_final_balance(self.blockchain.unconfirmed_transactions):
+        #     return None
 
         block = self.blockchain.mine(coinbase_tx)
 
         if block is not None:
             blk_json = block.serialize()
             self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
-            self.broadcast_message("h" + json.dumps(block.header))
 
         print(self.address, " created a block.")
 
         return block
 
     def check_final_balance(self, transactions):
-        """Check balance state if transactions were applied"""
+        """
+            Check balance state if transactions were applied.
+            The balance of an account is checked to make sure it is larger than
+            or equal to the spending transaction amount.
+        """
+        balance = copy.deepcopy(self._balance)
         for tx_json in transactions:
             recv_tx = Transaction.from_json(tx_json)
             # Sender must exist so if it doesn't, return false
-            if recv_tx.sender not in self.balance:
+            if recv_tx.sender not in balance:
                 return False
             # Create new account for receiver if it doesn't exist
-            if recv_tx.receiver not in self.balance:
-                self.balance[recv_tx.receiver] = 0
-            self.balance[recv_tx.sender] -= recv_tx.amount
-            self.balance[recv_tx.receiver] += recv_tx.amount
+            if recv_tx.receiver not in balance:
+                balance[recv_tx.receiver] = 0
+            balance[recv_tx.sender] -= recv_tx.amount
+            balance[recv_tx.receiver] += recv_tx.amount
             # Negative balance, return false
-            if self.balance[recv_tx.sender] < 0 or self.balance[recv_tx.receiver] < 0:
+            if balance[recv_tx.sender] < 0 or balance[recv_tx.receiver] < 0:
                 print("Negative balance can exist!")
                 return False
         return True
 
+    def test_connection(self):
+        msg = "hello peer"
+        self.broadcast_message(msg)
 
-if __name__ == "__main__":
-    Miner.new(("localhost",6666))
+
+
+
+

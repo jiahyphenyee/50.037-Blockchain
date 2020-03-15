@@ -19,6 +19,7 @@ class Block:
         self.header = self.create_header()
         self.tree = {}
         self.create_merkle(transactions)
+
         
     def serialize(self):
         # Serializes object to CBOR or JSON string
@@ -40,7 +41,7 @@ class Block:
         root = mt.get_root()
         self.tree = mt.tree
         return root
-    
+
 
 
 

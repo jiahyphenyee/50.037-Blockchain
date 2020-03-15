@@ -9,7 +9,7 @@ import base64
 
 class Transaction:
     
-    def __init__(self,sender, receiver, amount, comment="",signature=None):
+    def __init__(self, sender, receiver, amount, comment="", signature=None):
         self._sender = sender
         self._receiver = receiver
         self._amount = amount
@@ -19,7 +19,7 @@ class Transaction:
     
     @classmethod
     def new(cls, privkey, sender, receiver, amount, comment):
-        new_trans = cls(sender,receiver,amount,comment)
+        new_trans = cls(sender, receiver, amount, comment)
         # signing the transaction with private key
         new_trans.sign(privkey)
         return new_trans

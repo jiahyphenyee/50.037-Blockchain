@@ -10,6 +10,15 @@ from algorithms import *
 
 class SelfishMiner(Miner):
 
+    def __init__(self, privkey, pubkey, address, listener=MinerListener):
+        super().__init__(privkey, pubkey, address, listener=listener)
+        self.hidden_chain = copy.deepcopy(self.blockchain)
+        self.hidden_blocks = 0
+        self.good = True
+
+    def get_last_node(self):
+            return self.hidden_chain.last_node
+
     def mine(self):
         """Blocks mined are not added to the public blockchain"""
         # need to include this transaction so miner can obtain reward
@@ -27,17 +36,14 @@ class SelfishMiner(Miner):
         #     raise Exception("abnormal transactions!")
         #     return None
 
-        self.badchain = Blockchain()
         new_block, prev_block = self.create_new_block(tx_collection)
 
         proof = self.proof_of_work(new_block)
-        #self.blockchain.add_block(new_block, proof)
-        self.badchain.add_block(new_block, proof, self.get_last_node().block)
+        self.hidden_chain.add_block(new_block, proof, self.get_last_node())
+        self.hidden_blocks += 1
         
-        
-
-        if new_block is not None:
-            self.broadcast_blk(new_block)
+        # if new_block is not None:
+        #     self.broadcast_blk(new_block)
 
         self.unconfirmed_transactions = []
         print(f"{self.type} at {self.address} created a block.")

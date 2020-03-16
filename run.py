@@ -1,8 +1,19 @@
 import sys
 import time
 from miner import Miner
+from selfish import SelfishMiner
 from SPVClient import SPVClient
 from addr_server import get_peers
+
+def run_selfish_miner(addr):
+    miner = SelfishMiner.new(addr)
+    while True:
+        time.sleep(0.5)
+        miner.mine()
+        if miner.hidden_blocks == 5:
+            break
+    
+
 
 def run_miner(addr):
     miner = Miner.new(addr)

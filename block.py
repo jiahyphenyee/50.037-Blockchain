@@ -26,6 +26,7 @@ class Block:
         self.nonce = 0
         self.previous_hash = previous_hash # Adding the previous hash field
         self.hash = ""
+        self.miner = 0
 
     @property
     def header(self):

@@ -73,40 +73,6 @@ class Blockchain:
 
         return computed_hash
 
-    # def add_block(self, block, proof, previous_block):
-    #
-    #     """
-    #             A function that adds the block to the chain after verification.
-    #             Verification includes:
-    #             * Checking if the proof is valid.
-    #             * The previous_hash referred in the block and the hash of a latest block
-    #               in the chain match.
-    #             """
-    #
-    #     for node in self.last_nodes:
-    #         if node.block.__eq__(previous_block):
-    #             parent_node = node
-    #             break;
-    #
-    #     previous_hash = parent_node.block.hash
-    #
-    #     if previous_hash != block.previous_hash:
-    #         return False
-    #
-    #     if not self.is_valid_proof(block, proof):
-    #         return False
-    #
-    #     block.hash = proof
-    #
-    #     current_node = Node(parent_node, block)
-    #     parent_node.children.append(current_node)
-    #     self.last_nodes.append(current_node)
-    #     self.last_nodes.remove(parent_node)
-    #     # for node in self.last_nodes:
-    #     #     if len(node.children) != 0 :
-    #     #         self.last_nodes.remove(node)
-    #     return True
-
     def add_block(self, block, proof, previous_block=None):
         """
         A function that adds the block to the chain after verification.
@@ -192,11 +158,37 @@ class Blockchain:
             last_node = last_node.previous
         proofs = last_node.block.merkle.get_proof(transaction)
         return proofs, last_node.block
+    def get_balance(self):
+        blocks = self.get_blks()
+        dic = {}
+        for block in blocks:
+            if block.miner not in dic.keys():
+                dic[block.miner] = 100
+            else:
+                dic[block.miner] += 100
+            for transaction in block.transactions:
+                tx = Transaction.deserialize(transaction)
+                if tx.sender not in dic.keys():
+                    dic[tx.sender] = -tx.amount
+                else:
+                    dic[tx.sender] -= tx.amount
+                if tx.receiver not in dic.keys():
+                    dic[tx.receiver] = tx.amount
+                else:
+                    dic[tx.receiver] += tx.amount
+        return dic
+
 
 
 if __name__ == "__main__":
     blockchain = Blockchain()
     print(blockchain.last_node.block,blockchain.last_node.block.blk_height)
+    miner = SigningKey.generate()
+    miner_public = miner.generate()
+    alice_private = SigningKey.generate()
+    alice_public = alice_private.generate()
+    bob_private = SigningKey.generate()
+    bob_public = bob_private.generate()
     for j in range(2):
         transactions = list()
         for i in range(random.randint(10,11)):
@@ -209,6 +201,7 @@ if __name__ == "__main__":
             transactions.append(s)
 
         block = Block(transactions, time.time(), blockchain.last_node.block.hash)
+        block.miner = miner_public
         proof = blockchain.proof_of_work(block)
         print(blockchain.add(block,proof))
         print(block, block.blk_height)
@@ -219,6 +212,9 @@ if __name__ == "__main__":
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
+    balance_addr = blockchain.get_balance()
+    print(balance_addr)
+    print(balance_addr[miner_public])
     # proofs, block = blockchain.get_proof(transactions[0])
     # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
     # block = blockchain.last_node.block

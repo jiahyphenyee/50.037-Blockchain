@@ -16,8 +16,7 @@ class Node:
         self.peers = []
         self.listener = listener(address, self)
         # start the listener thread to communicate with network users
-        threading.Thread(target=self._listener.run).start()
-        self.run()
+        threading.Thread(target=self.listener.run).start()
         print(" New node running on address: ", self.address)
 
     def set_peers(self, peers):
@@ -83,10 +82,11 @@ class Node:
 class Listener:
 
     """Node listener thread to communicate with network users"""
-    def __init__(self, server_addr):
+    def __init__(self, server_addr, node):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(server_addr)
         self.socket.listen(5)
+        self.node = node
 
     def run(self):
         """Accepting connection"""
@@ -97,14 +97,14 @@ class Listener:
             print("New Connection from:", addr)
             new_thread.start()
 
-    def handle_client(self, tcpCliSock):
+    def handle_client(self, tcp_client):
         """Handle receiving and sending"""
-        data = tcpCliSock.recv(8196).decode()
-        self.handle_client_data(data, tcpCliSock)
+        data = tcp_client.recv(8196).decode()
+        self.handle_by_type(data, tcp_client)
 
-    def handle_client_data(self, data, tcpCliSock):
+    def handle_by_type(self, data, tcp_client):
         """To be overwritten when extending"""
-        raise Exception("Override handle_client_data when extending "
+        raise Exception("Override handle_by_type when extending "
                         + "from _NetNodeListener")
 
 

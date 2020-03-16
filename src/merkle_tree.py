@@ -10,6 +10,7 @@ class MerkleNode():
         self.leftChild = leftChild
         self.rightChild = rightChild
 
+
 class MerkleTree():
     def __init__(self, transactions = list()):
         self.leaves = list()

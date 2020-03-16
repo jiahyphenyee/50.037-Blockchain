@@ -1,20 +1,17 @@
-"""Evil Miner"""
-
 import copy
 import time
 from block import Block
 from transaction import Transaction
 from miner import Miner, MinerListener
 from blockchain import Blockchain
-from algorithms import *
 
 class SelfishMiner(Miner):
+    """Evil Miner class"""
 
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
         super().__init__(privkey, pubkey, address, listener=listener)
         self.hidden_chain = copy.deepcopy(self.blockchain)
         self.hidden_blocks = 0
-        self.good = True
 
     def get_last_node(self):
             return self.hidden_chain.last_node

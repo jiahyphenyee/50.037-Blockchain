@@ -6,6 +6,10 @@ from SPVClient import SPVClient
 from addr_server import get_peers
 
 def run_selfish_miner(addr):
+    """
+        Mines blocks without broadcasting. 
+        Only publishes blocks when miner has mined 5 new blocks quietly.
+    """
     miner = SelfishMiner.new(addr)
     while True:
         time.sleep(0.5)
@@ -13,7 +17,12 @@ def run_selfish_miner(addr):
         if miner.hidden_blocks == 5:
             break
     
-
+    blocks = miner.hidden_chain.get_blks
+    # broadcast last 5 blocks in the chain, starting from the 5th last block
+    for i in range(-5, 0, 1):
+        miner.broadcast_blk(blocks[i])
+        time.sleep(1)
+        
 
 def run_miner(addr):
     miner = Miner.new(addr)

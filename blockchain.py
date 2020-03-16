@@ -161,30 +161,48 @@ class Blockchain:
         self.unconfirmed_transactions = []
         return new_block.blk_height
 
+    def get_blks(self):
+        blocks = list()
+        last_node = self.last_node
+        while last_node.block.hash != self.root.hash:
+            blocks.append(last_node.block)
+            last_node = last_node.previous
+        return blocks
+
+    def get_proof(self, transaction):
+        #Transactions is the hash of the transaction
+        last_node = self.last_node
+        while last_node.block.hash != self.root.hash and transaction not in last_node.block.transactions:
+            last_node = last_node.previous
+        proofs = last_node.block.merkle.get_proof(transaction)
+        return proofs, last_node.block
+
 
 if __name__ == "__main__":
     blockchain = Blockchain()
-    transactions = list()
-    for i in range(random.randint(50,100)):
-        sk = SigningKey.generate()
-        vk = sk.get_verifying_key()
-        sk1 = SigningKey.generate()
-        vk1 = sk1.get_verifying_key()
-        t = Transaction.new(vk, vk1, 4, 'r', sk)
-        s = t.serialize()
-        transactions.append(s)
-        blockchain.add_new_transaction(s)
-    print(blockchain.last_node.block.compute_hash())
-    blockchain.mine()
-    block = blockchain.last_node.block
-    print(block.previous_hash)
-    s = block.serialize()
-    b2 = Block.deserialize(s)
-    print(b2.__eq__(block))
-    proof = block.merkle.get_proof(transactions[0])
-    print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, block.merkle.get_root()))
-    proof = b2.merkle.get_proof(transactions[0])
-    print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, b2.merkle.get_root()))
-    print(b2.merkle.root.hash == block.merkle.root.hash)
-    print(block.hash)
-    print(b2.hash)
+    for j in range(6):
+        transactions = list()
+        for i in range(random.randint(50,100)):
+            sk = SigningKey.generate()
+            vk = sk.get_verifying_key()
+            sk1 = SigningKey.generate()
+            vk1 = sk1.get_verifying_key()
+            t = Transaction.new(vk, vk1, 4, 'r', sk)
+            s = t.serialize()
+            transactions.append(s)
+            blockchain.add_new_transaction(s)
+        blockchain.mine()
+    proofs, block = blockchain.get_proof(transactions[0])
+    print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
+    # block = blockchain.last_node.block
+    # print(block.previous_hash)
+    # s = block.serialize()
+    # b2 = Block.deserialize(s)
+    # print(b2.__eq__(block))
+    # proof = block.merkle.get_proof(transactions[0])
+    # print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, block.merkle.get_root()))
+    # proof = b2.merkle.get_proof(transactions[0])
+    # print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, b2.merkle.get_root()))
+    # print(b2.merkle.root.hash == block.merkle.root.hash)
+    # print(block.hash)
+    # print(b2.hash)

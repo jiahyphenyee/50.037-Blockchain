@@ -216,7 +216,7 @@ class Miner(Node):
         return True
 
     def test_connection(self):
-        msg = "hello peer"
+        msg = "peer"
         self.broadcast_message(msg)
 
 

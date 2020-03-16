@@ -1,6 +1,7 @@
 
 import socket
 import threading
+from addr_server import *
 from concurrent.futures import ThreadPoolExecutor
 '''
 All Nodes include the routing function to participate in the network.
@@ -13,18 +14,34 @@ class Node:
     def __init__(self, privkey, pubkey, address, listener):
         self._keypair = (privkey, pubkey)
         self.address = address
-        self.peers = []
+        register(self)
+        self.peers = get_peers(self)
         self.listener = listener(address, self)
         # start the listener thread to communicate with network users
         threading.Thread(target=self.listener.run).start()
-        print(f" New {self.__class__.__name__} running on address: {self.address}")
+        print(f" New {self.type} running on address: {self.address}")
 
-    def set_peers(self, peers):
-        """We will use this to set all available peers at once"""
-        self.peers = peers
+    @property
+    def pubkey(self):
+        return self._keypair[0]
+
+    @property
+    def type(self):
+        return self.__class__.__name__
+
+    def update_peers(self):
+        self.peers = get_peers(self)
+        print(self.peers)
+
+    def find_peer_by_type(self, node_type):
+        self.update_peers()
+        for peer in self.peers:
+            if peer["type"] == node_type:
+                return peer
+        return None
 
     def find_peer_by_pubkey(self, pubkey):
-        """Find peer with particular pubkey"""
+        self.update_peers()
         for peer in self.peers:
             if peer["pubkey"] == pubkey:
                 return peer
@@ -57,8 +74,7 @@ class Node:
 
     def broadcast_message(self, msg):
         """Broadcast the message to peers"""
-        # Assume that peers are all nodes in the network
-        # (of course, not practical IRL since its not scalable)
+        self.update_peers()
         if not self.peers:
             raise Exception("Not connected to network.")
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -67,6 +83,7 @@ class Node:
 
     def broadcast_request(self, req):
         """Broadcast the request to peers"""
+        self.update_peers()
         if not self.peers:
             raise Exception("Not connected to network.")
         executor = ThreadPoolExecutor(max_workers=5)

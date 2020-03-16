@@ -1,4 +1,5 @@
 import copy
+import time
 from block import Block
 from transaction import Transaction
 from blockchain import Blockchain
@@ -28,16 +29,22 @@ class MinerListener(Listener):
 
         if msg_type == "b":  # new block
             blk_json = json.loads(data[1:])["blk_json"]
-            self.node.blockchain.setMinable(False)  # Stop mining
-            self.node.blockchain.add_block(Block.deserialize(blk_json))
+            # TODO: stop mining
+            # verify it if all transactions inside the block are valid
+            blk = Block.deserialize(blk_json)
+            transactions = blk.transactions
+            if self.node.check_final_balance(transactions):
+                self.node.blockchain.add_block(blk)
+            else:
+                print("invalid transactions in the new block!")
 
         elif msg_type == "t":  # new transaction
             tx_json = json.loads(data[1:])["tx_json"]
             self.node.blockchain.add_new_transaction(Transaction.deserialize(tx_json))
 
         elif msg_type == "r":  # request for transaction proof
-            tx_hash = json.loads(data[1:])["tx_hash"]
-            proof = self.node.get_transaction_proof(tx_hash)
+            tx_json = json.loads(data[1:])["tx_json"]
+            proof = self.node.get_transaction_proof(Transaction.deserialize(tx_json))
             if proof is None:
                 msg = "nil"
             else:
@@ -62,20 +69,17 @@ class Miner(Node):
 
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
         super().__init__(privkey, pubkey, address, listener)
-        self.account_balance = {}
-        # self.blockchain = Blockchain()
+        self.unconfirmed_transactions = []  # data yet to get into blockchain
+        self.blockchain = Blockchain()
 
     @classmethod
     def new(cls, address):
         """Create new Miner instance"""
         signing_key = ecdsa.SigningKey.generate()
         verifying_key = signing_key.get_verifying_key()
-        privkey = signing_key.to_string().hex()
-        pubkey = verifying_key.to_string().hex()
+        privkey = signing_key
+        pubkey = verifying_key
         return cls(privkey, pubkey, address)
-
-    def update(self):
-        return
 
     """ inquiry """
 
@@ -87,15 +91,15 @@ class Miner(Node):
 
     def get_balance(self, identifier):
         """Get balance given identifier ie. pubkey"""
-        self.update()
-        if identifier not in self.account_balance:
+        balance = copy.deepcopy(self.blockchain.get_balance)
+        if identifier not in balance:
             return 0
-        return self.account_balance[identifier]
+        return balance[identifier]
 
-    def get_blk_headers(self, prev_hash):
-        """Get headers of blocks that continues from prev_hash block. This method is to serve SPVClient"""
+    def get_blk_headers(self):
+        """Get headers of blocks of the longest chain"""
         blk_headers = {}
-        for block in self.blockchain.get_blks(prev_hash):
+        for block in self.blockchain.get_blks():
             blk_headers[block.compute_hash()] = block.header
 
         return blk_headers
@@ -106,7 +110,7 @@ class Miner(Node):
         """Create a new transaction"""
         tx = Transaction.new(self.privkey, self.pubkey, receiver, amount, comment)
         tx_json = tx.serialize()
-        print(self.address, " made a new transaction")
+        print(f"{self.type} at {self.address} made a new transaction")
         self.add_transaction(tx)
         msg = "t" + json.dumps({"tx_json": tx_json})
         self.broadcast_message(msg)
@@ -117,32 +121,75 @@ class Miner(Node):
         transaction = Transaction.deserialize(transaction_json)
         if not transaction.validate():
             raise Exception("New transaction failed signature verification.")
-        self.blockchain.add_new_transaction(transaction)
+        self.unconfirmed_transactions.append(transaction)
 
     """ Mining """
 
     def mine(self):
         # need to include this transaction so miner can obtain reward
         coinbase_tx = Transaction.new(
-            sender=self.pubkey,
-            receiver=self.pubkey,
+            sender=self._keypair[0],
+            receiver=self._keypair[1],
             amount=100,
             comment="Coinbase",
-            key=self.privkey,
+            key=self._keypair[0],
 
         )
-        # if not self.check_final_balance(self.blockchain.unconfirmed_transactions):
+
+        tx_collection = [coinbase_tx, self.get_tx_pool()]
+        # if not self.check_final_balance(tx_collection):
+        #     raise Exception("abnormal transactions!")
         #     return None
 
-        block = self.blockchain.mine(coinbase_tx)
+        new_block, prev_block = self.create_new_block(tx_collection)
 
-        if block is not None:
-            blk_json = block.serialize()
-            self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
+        proof = self.proof_of_work(new_block)
+        self.blockchain.add_block(new_block, proof)
 
-        print(self.address, " created a block.")
+        if new_block is not None:
+            self.broadcast_blk(new_block)
 
-        return block
+        self.unconfirmed_transactions = []
+        print(f"{self.type} at {self.address} created a block.")
+
+        return new_block, prev_block
+
+    def get_tx_pool(self):
+        return self.unconfirmed_transactions
+
+    def get_last_node(self):
+        return self.blockchain.last_node
+
+    def create_new_block(self, tx_collection):
+        last_node = self.get_last_node()
+
+        new_block = Block(blk_height=last_node.block.blk_height + 1,
+                          transactions=tx_collection,
+                          timestamp=time.time(),
+                          previous_hash=last_node.block.hash)
+        return new_block, last_node.block
+
+    def broadcast_blk(self, new_blk):
+        blk_json = new_blk.serialize()
+        self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
+
+    def proof_of_work(self, block):
+        """
+        Function that tries different values of the nonce to get a hash
+        that satisfies our difficulty criteria.
+        """
+        block.nonce = 0
+
+        computed_hash = block.compute_hash()
+        # while not computed_hash.startswith('0' * Blockchain.difficulty):
+        #     block.nonce += 1
+        #     computed_hash = block.compute_hash()
+
+        while not computed_hash < self.blockchain.TARGET:
+            block.nonce +=1
+            computed_hash = block.compute_hash()
+
+        return computed_hash
 
     def check_final_balance(self, transactions):
         """
@@ -150,7 +197,8 @@ class Miner(Node):
             The balance of an account is checked to make sure it is larger than
             or equal to the spending transaction amount.
         """
-        balance = copy.deepcopy(self._balance)
+        balance = copy.deepcopy(self.blockchain.get_balance)
+
         for tx_json in transactions:
             recv_tx = Transaction.from_json(tx_json)
             # Sender must exist so if it doesn't, return false
@@ -168,7 +216,7 @@ class Miner(Node):
         return True
 
     def test_connection(self):
-        msg = "hello peer"
+        msg = "peer"
         self.broadcast_message(msg)
 
 

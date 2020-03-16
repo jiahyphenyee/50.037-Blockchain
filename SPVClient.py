@@ -43,10 +43,10 @@ class SPVClient(Node):
         pubkey = verifying_key.to_string().hex()
         return cls(privkey, pubkey, address)
 
-    def get_blk_headers(self, prev_hash=None):
+    def get_blk_headers(self):
         """ Get headers for all blocks"""
         blk_headers = {}
-        req = "h" + json.dumps({"identifier": self.pubkey, "prev-hash": prev_hash})
+        req = "h"
         reply = self.broadcast_request(req)
         headers = json.loads(reply)["headers"]
         for blk_hash, header in headers.values():
@@ -63,9 +63,10 @@ class SPVClient(Node):
         self.broadcast_message(msg)
         return tx
 
-    def verify_user_transaction(self, tx_hash):
+    def verify_user_transaction(self, tx):
         """Verify that transaction is in blockchain"""
-        req = "r" + json.dumps({"tx_hash": tx_hash})
+        tx_json = tx.serialize()
+        req = "r" + json.dumps({"tx_json": tx_json})
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
         blk_hash = valid_reply["blk_hash"]
@@ -78,9 +79,8 @@ class SPVClient(Node):
         if (blk_hash not in self.blk_headers_by_hash
                 or last_blk_hash not in self.blk_headers_by_hash):
             return False
-        tx_json = self.transactions[tx_hash]
         blk_header = self.blk_headers_by_hash[blk_hash]
-        if not verify_proof(tx_json, proof, blk_header["root"]):
+        if not verify_proof(tx, proof, blk_header["root"]):
             # Potential eclipse attack
             raise Exception("Transaction proof verification failed.")
 

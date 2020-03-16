@@ -26,8 +26,10 @@ class MinerListener(Listener):
     def handle_by_msg_type(self, data, tcp_client):
         """Handle client data based on msg_type"""
         msg_type = data[0].lower()
-
-        if msg_type == "b":  # new block
+        if msg_type == "n":  # updates on network nodes
+            nodes = json.loads(data[1:])["nodes"]
+            self.node.set_peers(nodes)
+        elif msg_type == "b":  # new block
             blk_json = json.loads(data[1:])["blk_json"]
             # TODO: stop mining
             # verify it if all transactions inside the block are valid
@@ -56,7 +58,7 @@ class MinerListener(Listener):
                 })
             tcp_client.sendall(msg.encode())
 
-        elif msg_type == "h":  # request for headers by spvclient
+        elif msg_type == "x":  # request for headers by spvclient
             msg = json.dumps({
                 "headers": self.node.get_blk_header()
             })
@@ -108,7 +110,11 @@ class Miner(Node):
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        tx = Transaction.new(self.privkey, self.pubkey, receiver, amount, comment)
+        tx = Transaction.new(sender=self._keypair[1],
+                             receiver=obtain_key_from_string(receiver),
+                             amount=amount,
+                             comment="",
+                             key=self._keypair[0])
         tx_json = tx.serialize()
         print(f"{self.type} at {self.address} made a new transaction")
         self.add_transaction(tx)
@@ -127,27 +133,28 @@ class Miner(Node):
 
     def mine(self):
         # need to include this transaction so miner can obtain reward
-        coinbase_tx = Transaction.new(
-            sender=self._keypair[0],
-            receiver=self._keypair[1],
-            amount=100,
-            comment="Coinbase",
-            key=self._keypair[0],
+        # coinbase_tx = Transaction.new(
+        #     sender=self._keypair[0],
+        #     receiver=self._keypair[1],
+        #     amount=100,
+        #     comment="Coinbase",
+        #     key=self._keypair[0],
+        #
+        # )
 
-        )
-
-        tx_collection = [coinbase_tx, self.get_tx_pool()]
+        # tx_collection = [coinbase_tx, self.get_tx_pool()]
         # if not self.check_final_balance(tx_collection):
         #     raise Exception("abnormal transactions!")
         #     return None
 
-        new_block, prev_block = self.create_new_block(tx_collection)
+        new_block, prev_block = self.create_new_block(self.get_tx_pool)
 
         proof = self.proof_of_work(new_block)
         self.blockchain.add_block(new_block, proof)
 
         if new_block is not None:
             self.broadcast_blk(new_block)
+
 
         self.unconfirmed_transactions = []
         print(f"{self.type} at {self.address} created a block.")
@@ -163,7 +170,8 @@ class Miner(Node):
     def create_new_block(self, tx_collection):
         last_node = self.get_last_node()
 
-        new_block = Block(blk_height=last_node.block.blk_height + 1,
+        new_block = Block(#miner=self.pubkey
+                          blk_height=last_node.block.blk_height + 1,
                           transactions=tx_collection,
                           timestamp=time.time(),
                           previous_hash=last_node.block.hash)
@@ -172,6 +180,10 @@ class Miner(Node):
     def broadcast_blk(self, new_blk):
         blk_json = new_blk.serialize()
         self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
+        self.broadcast_message("h" + json.dumps({"blk_hash": new_blk.compute_hash(),
+                                                 "blk_header": new_blk.header
+                                                 }))
+
 
     def proof_of_work(self, block):
         """

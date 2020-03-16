@@ -1,6 +1,7 @@
-
+import base64
 import socket
 import threading
+from algorithms import *
 from addr_server import *
 from concurrent.futures import ThreadPoolExecutor
 '''
@@ -11,11 +12,14 @@ For simplicity, we assume the address list of listening nodes are already availa
 
 
 class Node:
+
+    ADDR_SERVER=("localhost", 6666)
+
     def __init__(self, privkey, pubkey, address, listener):
         self._keypair = (privkey, pubkey)
         self.address = address
-        register(self)
-        self.peers = get_peers(self)
+        self.register_node()
+        self.peers = []
         self.listener = listener(address, self)
         # start the listener thread to communicate with network users
         threading.Thread(target=self.listener.run).start()
@@ -23,25 +27,37 @@ class Node:
 
     @property
     def pubkey(self):
-        return self._keypair[0]
+        return self._keypair[1]
 
     @property
     def type(self):
         return self.__class__.__name__
 
-    def update_peers(self):
-        self.peers = get_peers(self)
-        print(self.peers)
+    def set_peers(self, peers):
+        my_peers = []
+        for peer in peers:
+            if peer["address"] != self.address:
+                my_peers.append(peer)
+        self.peers = my_peers
+
+    def register_node(self):
+        msg = "n" + json.dumps({
+            "type": self.type,  # Miner, SPVClient
+            "address": self.address,
+            "pubkey": stringify_key(self.pubkey)
+        })
+        print("registering node node: ")
+        print(msg)
+        self._send_message(msg, Node.ADDR_SERVER)
 
     def find_peer_by_type(self, node_type):
-        self.update_peers()
+
         for peer in self.peers:
             if peer["type"] == node_type:
                 return peer
         return None
 
     def find_peer_by_pubkey(self, pubkey):
-        self.update_peers()
         for peer in self.peers:
             if peer["pubkey"] == pubkey:
                 return peer
@@ -74,7 +90,6 @@ class Node:
 
     def broadcast_message(self, msg):
         """Broadcast the message to peers"""
-        self.update_peers()
         if not self.peers:
             raise Exception("Not connected to network.")
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -83,7 +98,6 @@ class Node:
 
     def broadcast_request(self, req):
         """Broadcast the request to peers"""
-        self.update_peers()
         if not self.peers:
             raise Exception("Not connected to network.")
         executor = ThreadPoolExecutor(max_workers=5)

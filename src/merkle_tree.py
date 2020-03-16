@@ -94,6 +94,7 @@ class MerkleTree():
 
 def verify_proof(entry, proofs, root):
     # Verify the proof for the entry and given root. Returns boolean.
+    entry = MerkleTree.compute_hash(entry)
     if len(proofs) == 0:
         return False
     for proof in proofs:

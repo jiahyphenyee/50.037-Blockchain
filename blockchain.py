@@ -5,9 +5,9 @@ from block import Block
 from transaction import Transaction
 from merkle_tree import *
 
-TARGET = "00000fffffffffff"
+TARGET = "ffffffffffffffff"
 class Node:
-    def __init__(self, previous, block=Block(0, [], 0, 0)):
+    def __init__(self, previous, block=Block( [], 0, 0)):
         self.block = block
         self.children = []  # the pointer initially points to nothing
         self.previous = previous
@@ -25,6 +25,7 @@ class Blockchain:
         self.root_node = Node(None, self.root)
         self.last_nodes = []
         self.last_nodes.append(self.root_node)
+        self.nodes = [self.root_node]
 
     def create_genesis_block(self):
         """
@@ -32,7 +33,8 @@ class Blockchain:
         the chain. The block has blk_height 0, previous_hash as 0, and
         a valid hash.
         """
-        genesis_block = Block(0, [], time.time(), "0")
+        genesis_block = Block([], time.time(), "0")
+        genesis_block.blk_height = 0
         genesis_block.hash = genesis_block.compute_hash()
         return genesis_block
 
@@ -45,7 +47,7 @@ class Blockchain:
         return self.resolve()
 
     def resolve(self):
-        idx = 0
+        idx = -1
         last_node = None
         for node in self.last_nodes:
             if node.block.blk_height >= idx:
@@ -71,41 +73,41 @@ class Blockchain:
 
         return computed_hash
 
-    def add_block(self, block, proof, previous_block):
+    # def add_block(self, block, proof, previous_block):
+    #
+    #     """
+    #             A function that adds the block to the chain after verification.
+    #             Verification includes:
+    #             * Checking if the proof is valid.
+    #             * The previous_hash referred in the block and the hash of a latest block
+    #               in the chain match.
+    #             """
+    #
+    #     for node in self.last_nodes:
+    #         if node.block.__eq__(previous_block):
+    #             parent_node = node
+    #             break;
+    #
+    #     previous_hash = parent_node.block.hash
+    #
+    #     if previous_hash != block.previous_hash:
+    #         return False
+    #
+    #     if not self.is_valid_proof(block, proof):
+    #         return False
+    #
+    #     block.hash = proof
+    #
+    #     current_node = Node(parent_node, block)
+    #     parent_node.children.append(current_node)
+    #     self.last_nodes.append(current_node)
+    #     self.last_nodes.remove(parent_node)
+    #     # for node in self.last_nodes:
+    #     #     if len(node.children) != 0 :
+    #     #         self.last_nodes.remove(node)
+    #     return True
 
-        """
-                A function that adds the block to the chain after verification.
-                Verification includes:
-                * Checking if the proof is valid.
-                * The previous_hash referred in the block and the hash of a latest block
-                  in the chain match.
-                """
-
-        for node in self.last_nodes:
-            if node.block.__eq__(previous_block):
-                parent_node = node
-                break;
-
-        previous_hash = parent_node.block.hash
-
-        if previous_hash != block.previous_hash:
-            return False
-
-        if not self.is_valid_proof(block, proof):
-            return False
-
-        block.hash = proof
-
-        current_node = Node(parent_node, block)
-        parent_node.children.append(current_node)
-        self.last_nodes.append(current_node)
-        self.last_nodes.remove(parent_node)
-        # for node in self.last_nodes:
-        #     if len(node.children) != 0 :
-        #         self.last_nodes.remove(node)
-        return True
-
-    def add_block(self, block, proof):
+    def add_block(self, block, proof, previous_block=None):
         """
         A function that adds the block to the chain after verification.
         Verification includes:
@@ -113,19 +115,26 @@ class Blockchain:
         * The previous_hash referred in the block and the hash of a latest block
           in the chain match.
         """
-        parent_node = self.last_node
+        if previous_block is not None:
+            for node in self.nodes:
+                if node.block.__eq__(previous_block):
+                    parent_node = node
+                    break;
+        else:
+            parent_node = self.last_node
         previous_hash = parent_node.block.hash
-
         if previous_hash != block.previous_hash:
             return False
 
         if not self.is_valid_proof(block, proof):
             return False
-
+        block.blk_height = parent_node.block.blk_height + 1
         block.hash = proof
-        current_node = Node(self.last_node,block)
+        current_node = Node(parent_node, block)
         parent_node.children.append(current_node)
-        self.last_nodes.remove(parent_node)
+        self.nodes.append(current_node)
+        if previous_block is None:
+            self.last_nodes.remove(parent_node)
         self.last_nodes.append(current_node)
         return True
 
@@ -134,7 +143,7 @@ class Blockchain:
         Check if block_hash is valid hash of block and satisfies
         the difficulty criteria.
         """
-        return (block_hash.startswith('0' * Blockchain.difficulty) and
+        return (block_hash < TARGET and
                 block_hash == block.compute_hash())
 
     # def add_new_transaction(self, transaction):
@@ -160,7 +169,7 @@ class Blockchain:
         #                   previous_hash=last_node.block.hash)
         #
         # proof = self.proof_of_work(new_block)
-        if previous_block.__eq__(None):
+        if previous_block is None:
             added = self.add_block(new_block, proof)
         else:
             added = self.add_block(new_block, proof, previous_block)
@@ -173,10 +182,11 @@ class Blockchain:
         while last_node.block.hash != self.root.hash:
             blocks.append(last_node.block)
             last_node = last_node.previous
+        blocks.append(last_node.block)
         return blocks
 
     def get_proof(self, transaction):
-        #Transactions is the hash of the transaction
+        #Transaction
         last_node = self.last_node
         while last_node.block.hash != self.root.hash and transaction not in last_node.block.transactions:
             last_node = last_node.previous
@@ -186,9 +196,10 @@ class Blockchain:
 
 if __name__ == "__main__":
     blockchain = Blockchain()
-    for j in range(6):
+    print(blockchain.last_node.block,blockchain.last_node.block.blk_height)
+    for j in range(2):
         transactions = list()
-        for i in range(random.randint(50,100)):
+        for i in range(random.randint(10,11)):
             sk = SigningKey.generate()
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
@@ -196,10 +207,20 @@ if __name__ == "__main__":
             t = Transaction.new(vk, vk1, 4, 'r', sk)
             s = t.serialize()
             transactions.append(s)
-            blockchain.add_new_transaction(s)
-        blockchain.mine()
-    proofs, block = blockchain.get_proof(transactions[0])
-    print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
+
+        block = Block(transactions, time.time(), blockchain.last_node.block.hash)
+        proof = blockchain.proof_of_work(block)
+        print(blockchain.add(block,proof))
+        print(block, block.blk_height)
+    screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash)
+    proof = blockchain.proof_of_work(screwedUpBlock)
+    print(blockchain.add(screwedUpBlock, proof, blockchain.root))
+    print(screwedUpBlock, screwedUpBlock.blk_height)
+    for node in blockchain.last_nodes:
+        print(node.block, node.block.blk_height)
+    print(blockchain.get_blks())
+    # proofs, block = blockchain.get_proof(transactions[0])
+    # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
     # block = blockchain.last_node.block
     # print(block.previous_hash)
     # s = block.serialize()

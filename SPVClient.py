@@ -43,10 +43,10 @@ class SPVClient(Node):
         pubkey = verifying_key.to_string().hex()
         return cls(privkey, pubkey, address)
 
-    def get_blk_headers(self, prev_hash=None):
+    def get_blk_headers(self):
         """ Get headers for all blocks"""
         blk_headers = {}
-        req = "h" + json.dumps({"identifier": self.pubkey, "prev-hash": prev_hash})
+        req = "h"
         reply = self.broadcast_request(req)
         headers = json.loads(reply)["headers"]
         for blk_hash, header in headers.values():

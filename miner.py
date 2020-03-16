@@ -69,21 +69,17 @@ class Miner(Node):
 
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
         super().__init__(privkey, pubkey, address, listener)
-        self.account_balance = {}
         self.unconfirmed_transactions = []  # data yet to get into blockchain
-        # self.blockchain = Blockchain()
+        self.blockchain = Blockchain()
 
     @classmethod
     def new(cls, address):
         """Create new Miner instance"""
         signing_key = ecdsa.SigningKey.generate()
         verifying_key = signing_key.get_verifying_key()
-        privkey = signing_key.to_string().hex()
-        pubkey = verifying_key.to_string().hex()
+        privkey = signing_key
+        pubkey = verifying_key
         return cls(privkey, pubkey, address)
-
-    def update(self):
-        return
 
     """ inquiry """
 
@@ -95,15 +91,15 @@ class Miner(Node):
 
     def get_balance(self, identifier):
         """Get balance given identifier ie. pubkey"""
-        self.update()
-        if identifier not in self.account_balance:
+        balance = copy.deepcopy(self.blockchain.get_balance)
+        if identifier not in balance:
             return 0
-        return self.account_balance[identifier]
+        return balance[identifier]
 
-    def get_blk_headers(self, prev_hash):
-        """Get headers of blocks that continues from prev_hash block. This method is to serve SPVClient"""
+    def get_blk_headers(self):
+        """Get headers of blocks of the longest chain"""
         blk_headers = {}
-        for block in self.blockchain.get_blks(prev_hash):
+        for block in self.blockchain.get_blks():
             blk_headers[block.compute_hash()] = block.header
 
         return blk_headers
@@ -114,7 +110,7 @@ class Miner(Node):
         """Create a new transaction"""
         tx = Transaction.new(self.privkey, self.pubkey, receiver, amount, comment)
         tx_json = tx.serialize()
-        print(self.address, " made a new transaction")
+        print(f"{self.type} at {self.address} made a new transaction")
         self.add_transaction(tx)
         msg = "t" + json.dumps({"tx_json": tx_json})
         self.broadcast_message(msg)
@@ -132,17 +128,18 @@ class Miner(Node):
     def mine(self):
         # need to include this transaction so miner can obtain reward
         coinbase_tx = Transaction.new(
-            sender=self.pubkey,
-            receiver=self.pubkey,
+            sender=self._keypair[0],
+            receiver=self._keypair[1],
             amount=100,
             comment="Coinbase",
-            key=self.privkey,
+            key=self._keypair[0],
 
         )
-        if not self.check_final_balance(self.unconfirmed_transactions):
-            raise Exception("abnormal transactions!")
-            return None
-        tx_collection = coinbase_tx + self.get_tx_pool()
+
+        tx_collection = [coinbase_tx, self.get_tx_pool()]
+        # if not self.check_final_balance(tx_collection):
+        #     raise Exception("abnormal transactions!")
+        #     return None
 
         new_block, prev_block = self.create_new_block(tx_collection)
 
@@ -153,7 +150,7 @@ class Miner(Node):
             self.broadcast_blk(new_block)
 
         self.unconfirmed_transactions = []
-        print(f"{self.__Class__.__name__} at {self.address} created a block.")
+        print(f"{self.type} at {self.address} created a block.")
 
         return new_block, prev_block
 
@@ -166,13 +163,13 @@ class Miner(Node):
     def create_new_block(self, tx_collection):
         last_node = self.get_last_node()
 
-        new_block = Block(index=last_node.block.index + 1,
+        new_block = Block(blk_height=last_node.block.blk_height + 1,
                           transactions=tx_collection,
                           timestamp=time.time(),
                           previous_hash=last_node.block.hash)
         return new_block, last_node.block
 
-    def broadcast_blk(self,new_blk):
+    def broadcast_blk(self, new_blk):
         blk_json = new_blk.serialize()
         self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
 
@@ -200,7 +197,8 @@ class Miner(Node):
             The balance of an account is checked to make sure it is larger than
             or equal to the spending transaction amount.
         """
-        balance = copy.deepcopy(self._balance)
+        balance = copy.deepcopy(self.blockchain.get_balance)
+
         for tx_json in transactions:
             recv_tx = Transaction.from_json(tx_json)
             # Sender must exist so if it doesn't, return false

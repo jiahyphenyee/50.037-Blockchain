@@ -3,7 +3,7 @@ import time
 import json
 from miner import Miner, MinerListener
 from SPVClient import SPVClient
-from peers import get_peers
+from addr_server import get_peers
 
 """
     Bad Players: 

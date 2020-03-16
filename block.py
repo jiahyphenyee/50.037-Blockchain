@@ -7,16 +7,15 @@ import random
 
 
 class Block:
-    def __init__(self, blk_height, transactions, timestamp, previous_hash,):
+    def __init__(self, transactions, timestamp,previous_hash):
         """
         Constructor for the `Block` class.
-        :param index:         Unique ID of the block.
         :param transactions:  List of transactions.
         :param timestamp:     Time of generation of the block.
         :param previous_hash: Hash of the previous block in the chain which this block is part of.
         :PARAMS not included in intiliazation is hash
         """
-        self.blk_height = blk_height
+        self.blk_height = 0
         self.merkle = MerkleTree(transactions) if len(transactions) != 0 else None
         self.transactions = transactions
         if self.merkle.__eq__(None):
@@ -27,6 +26,7 @@ class Block:
         self.nonce = 0
         self.previous_hash = previous_hash # Adding the previous hash field
         self.hash = ""
+        self.miner = 0
 
     @property
     def header(self):

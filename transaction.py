@@ -58,26 +58,27 @@ def preImage(image):
 
 
 class Transaction:
-    def __init__(self, sender, receiver, amount, comment):
+    def __init__(self, sender, receiver, amount, comment, signature=b""):
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
         self.comment = comment
+        self.signature = signature
 
 
     # Instantiates object from passed values
 
     @classmethod
     def new(cls, sender, receiver, amount, comment, key):
-        cls.sender = sender  # a public key of sender
-        cls.receiver = receiver  # a public key of receiver
-        cls.amount = amount  # transaction amount, an interger>0
-        cls.comment = comment  # arbitary text can be empty
+        # cls.sender = sender  # a public key of sender
+        # cls.receiver = receiver  # a public key of receiver
+        # cls.amount = amount  # transaction amount, an interger>0
+        # cls.comment = comment  # arbitary text can be empty
         transaction = cls(sender, receiver, amount, comment)
         transaction.signature = transaction.sign(key)
         return transaction
 
-    def serialize(self):
+    def serialize_sig(self):
         # Serializes object to CBOR or JSON string
         dic = {}
         dic['sender'] = base64.encodebytes(self.sender.to_string()).decode('ascii')
@@ -87,16 +88,27 @@ class Transaction:
         serialized = json.dumps(dic)
         return serialized
 
+    def serialize(self):
+        # Serializes object to CBOR or JSON string
+        dic = {}
+        dic['sender'] = base64.encodebytes(self.sender.to_string()).decode('ascii')
+        dic['receiver'] = base64.encodebytes(self.receiver.to_string()).decode("ascii")
+        dic['amount'] = self.amount
+        dic['comment'] = self.comment
+        dic['signature'] = base64.encodebytes(self.signature).decode('ascii')
+        serialized = json.dumps(dic)
+        return serialized
+
     @classmethod
-    def deserialize(cls, data, sk):
+    def deserialize(cls, data):
         # Instantiates/Deserializes object from CBOR or JSON string
         deserialized = json.loads(data)
         deserialized['sender'] = deserialized['sender'].encode('ascii')
         deserialized['receiver'] = deserialized['receiver'].encode('ascii')
-        trans = Transaction()
-        trans.new(ecdsa.VerifyingKey.from_string(base64.decodebytes(deserialized['sender'])),
+        deserialized['signature'] = deserialized['signature'].encode('ascii')
+        trans = Transaction(ecdsa.VerifyingKey.from_string(base64.decodebytes(deserialized['sender'])),
                   ecdsa.VerifyingKey.from_string(base64.decodebytes(deserialized['receiver'])),
-                  deserialized['amount'], deserialized['comment'], sk)
+                  deserialized['amount'], deserialized['comment'], base64.decodebytes(deserialized['signature']))
         try:
             if trans.validate():
                 return trans
@@ -107,7 +119,7 @@ class Transaction:
     def sign(self, sk):
         # Sign object with private key passed
         # That can be called within new()
-        m = self.serialize()
+        m = self.serialize_sig()
         return sk.sign(m.encode())
 
     def validate(self):
@@ -115,12 +127,11 @@ class Transaction:
         # Can be called within from_json()
         # vk = self.sender.get_verifying_key()
         # vk.verify(self.signature, data.encode())
-        return self.sender.verify(self.signature, self.serialize().encode())
+        return self.sender.verify(self.signature, self.serialize_sig().encode())
 
     def __eq__(self, other):
         # Check whether transactions are the same
-        return self.sender == other.sender and self.receiver == other.receiver and self.amount == other.amount \
-               and self.comment == other.comment
+        return self.signature == other.signature
 
 
 
@@ -150,25 +161,27 @@ if __name__ == "__main__":
     # vk = sk.verifying_key
     # signature = sk1.sign(b"message")
     # print(vk.verify(signature, b"message"))
-    # sk = SigningKey.generate()
-    # vk = sk.get_verifying_key()
-    # sk1 = SigningKey.generate()
-    # vk1 = sk1.get_verifying_key()
-    # t = Transaction()
-    # t.new(vk, vk1, 4, 'r', sk)
-    # s = t.serialize()
-    # t1 = t.deserialize(s, sk)
-    transactions = list()
-    for i in range(random.randint(100,1000)):
-        sk = SigningKey.generate()
-        vk = sk.get_verifying_key()
-        sk1 = SigningKey.generate()
-        vk1 = sk1.get_verifying_key()
-        t = Transaction.new(vk, vk1, 4, 'r', sk)
-        s = t.serialize()
-        transactions.append(s)
-    t = MerkleTree(transactions)
-    for i in range(10):
-        j = random.randint(0,len(transactions))
-        proofs = t.get_proof(transactions[j])
-        print(verify_proof(MerkleTree.compute_hash(transactions[j]), proofs, t.get_root()))
+    sk = SigningKey.generate()
+    vk = sk.get_verifying_key()
+    sk1 = SigningKey.generate()
+    vk1 = sk1.get_verifying_key()
+    t = Transaction.new(vk, vk1, 4, 'r', sk)
+    print(t.validate())
+    print(t.signature)
+    s = t.serialize()
+    t1 = t.deserialize(s)
+    print(t1 == t)
+    # transactions = list()
+    # for i in range(random.randint(100,1000)):
+    #     sk = SigningKey.generate()
+    #     vk = sk.get_verifying_key()
+    #     sk1 = SigningKey.generate()
+    #     vk1 = sk1.get_verifying_key()
+    #     t = Transaction.new(vk, vk1, 4, 'r', sk)
+    #     s = t.serialize()
+    #     transactions.append(s)
+    # t = MerkleTree(transactions)
+    # for i in range(10):
+    #     j = random.randint(0,len(transactions))
+    #     proofs = t.get_proof(transactions[j])
+    #     print(verify_proof(MerkleTree.compute_hash(transactions[j]), proofs, t.get_root()))

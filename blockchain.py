@@ -1,9 +1,9 @@
 import time
 import random
 from ecdsa import SigningKey
-from src.block import Block
-from src.transaction import Transaction
-from src.merkle_tree import *
+from block import Block
+from transaction import Transaction
+from merkle_tree import *
 
 TARGET = "00000fffffffffff"
 class Node:

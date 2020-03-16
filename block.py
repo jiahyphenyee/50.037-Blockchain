@@ -1,6 +1,6 @@
 
-from src.merkle_tree import *
-from src.transaction import *
+from merkle_tree import *
+from transaction import *
 from hashlib import sha256
 import json
 import random
@@ -69,5 +69,3 @@ class Block:
 
     def __eq__(self, other):
         return self.nonce == other.nonce and self.root == other.root and self.timestamp == other.timestamp and self.previous_hash == other.previous_hash
-
-

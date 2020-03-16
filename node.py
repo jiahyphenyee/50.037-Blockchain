@@ -1,4 +1,4 @@
-from monsterurl import get_monster
+
 import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +17,7 @@ class Node:
         self.listener = listener(address, self)
         # start the listener thread to communicate with network users
         threading.Thread(target=self.listener.run).start()
-        print(" New node running on address: ", self.address)
+        print(f" New {self.__class__.__name__} running on address: {self.address}")
 
     def set_peers(self, peers):
         """We will use this to set all available peers at once"""
@@ -59,20 +59,20 @@ class Node:
         """Broadcast the message to peers"""
         # Assume that peers are all nodes in the network
         # (of course, not practical IRL since its not scalable)
-        if not self._peers:
+        if not self.peers:
             raise Exception("Not connected to network.")
         with ThreadPoolExecutor(max_workers=5) as executor:
-            for peer in self._peers:
+            for peer in self.peers:
                 executor.submit(Node._send_message, msg, peer['address'])
 
     def broadcast_request(self, req):
         """Broadcast the request to peers"""
-        if not self._peers:
+        if not self.peers:
             raise Exception("Not connected to network.")
         executor = ThreadPoolExecutor(max_workers=5)
         futures = [
             executor.submit(Node._send_request, req, peer['address'])
-            for peer in self._peers
+            for peer in self.peers
         ]
         executor.shutdown(wait=True)
         replies = [future.result() for future in futures]
@@ -92,17 +92,19 @@ class Listener:
         """Accepting connection"""
         while True:
             conn, addr = self.socket.accept()
+            print("New Connection!")
             # Start new thread to handle client
-            new_thread = threading.Thread(self.handle_client, [conn])
-            print("New Connection from:", addr)
+            new_thread = threading.Thread(target=self.handle_client, args=(conn,))
+
             new_thread.start()
 
     def handle_client(self, tcp_client):
         """Handle receiving and sending"""
         data = tcp_client.recv(8196).decode()
-        self.handle_by_type(data, tcp_client)
+        print(f"receiving message of type {data}")
+        self.handle_by_msg_type(data, tcp_client)
 
-    def handle_by_type(self, data, tcp_client):
+    def handle_by_msg_type(self, data, tcp_client):
         """To be overwritten when extending"""
         raise Exception("Override handle_by_type when extending "
                         + "from _NetNodeListener")

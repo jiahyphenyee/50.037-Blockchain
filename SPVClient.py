@@ -1,13 +1,8 @@
-import json
-import sys
-import time
-import random
-import os.path
 
-from src.algorithms import *
-from src.node import Node, Listener
-from src.merkle_tree import verify_proof
-from src.transaction import Transaction
+from algorithms import *
+from node import Node, Listener
+from merkle_tree import verify_proof
+from transaction import Transaction
 
 '''
 Design and implement an SPVClient class. SPV clients should implement a simple SPV logic, i.e., they should:
@@ -74,7 +69,7 @@ class SPVClient(Node):
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
         blk_hash = valid_reply["blk_hash"]
-        proof = valid_reply["proof"]
+        proof = valid_reply["merkle_path"]
         last_blk_hash = valid_reply["last_blk_hash"]
         # Transaction not in blockchain
         if proof is None:

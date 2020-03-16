@@ -44,6 +44,8 @@ class MinerListener(Listener):
                 msg = json.dumps({
                     "blk_hash": proof[0],
                     "merkle_path": proof[1],
+                    "last_blk_hash": proof[3],
+
                 })
             tcp_client.sendall(msg.encode())
 

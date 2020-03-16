@@ -69,7 +69,7 @@ class SPVClient(Node):
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
         blk_hash = valid_reply["blk_hash"]
-        proof = valid_reply["proof"]
+        proof = valid_reply["merkle_path"]
         last_blk_hash = valid_reply["last_blk_hash"]
         # Transaction not in blockchain
         if proof is None:

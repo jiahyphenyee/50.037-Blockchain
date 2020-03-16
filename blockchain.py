@@ -1,8 +1,13 @@
 import time
+import random
+from ecdsa import SigningKey
 from block import Block
+from transaction import Transaction
+from merkle_tree import *
 
+TARGET = "00000fffffffffff"
 class Node:
-    def __init__(self, previous, block=Block):
+    def __init__(self, previous, block=Block(0, [], 0, 0)):
         self.block = block
         self.children = []  # the pointer initially points to nothing
         self.previous = previous
@@ -24,7 +29,7 @@ class Blockchain:
     def create_genesis_block(self):
         """
         A function to generate genesis block and appends it to
-        the chain. The block has index 0, previous_hash as 0, and
+        the chain. The block has blk_height 0, previous_hash as 0, and
         a valid hash.
         """
         genesis_block = Block(0, [], time.time(), "0")
@@ -43,9 +48,9 @@ class Blockchain:
         idx = 0
         last_node = None
         for node in self.last_nodes:
-            if node.block.index >= idx:
-                idx = node.block.index
-                last_node = node.block
+            if node.block.blk_height >= idx:
+                idx = node.block.blk_height
+                last_node = node
         return last_node
 
     def proof_of_work(self, block):
@@ -56,8 +61,12 @@ class Blockchain:
         block.nonce = 0
 
         computed_hash = block.compute_hash()
-        while not computed_hash.startswith('0' * Blockchain.difficulty):
-            block.nonce += 1
+        # while not computed_hash.startswith('0' * Blockchain.difficulty):
+        #     block.nonce += 1
+        #     computed_hash = block.compute_hash()
+
+        while not computed_hash < TARGET:
+            block.nonce +=1
             computed_hash = block.compute_hash()
 
         return computed_hash
@@ -82,7 +91,7 @@ class Blockchain:
         if previous_hash != block.previous_hash:
             return False
 
-        if not Blockchain.is_valid_proof(block, proof):
+        if not self.is_valid_proof(block, proof):
             return False
 
         block.hash = proof
@@ -90,9 +99,10 @@ class Blockchain:
         current_node = Node(parent_node, block)
         parent_node.children.append(current_node)
         self.last_nodes.append(current_node)
-        for node in self.last_nodes:
-            if len(node.children) != 0 :
-                self.last_nodes.remove(node)
+        self.last_nodes.remove(parent_node)
+        # for node in self.last_nodes:
+        #     if len(node.children) != 0 :
+        #         self.last_nodes.remove(node)
         return True
 
     def add_block(self, block, proof):
@@ -109,7 +119,7 @@ class Blockchain:
         if previous_hash != block.previous_hash:
             return False
 
-        if not Blockchain.is_valid_proof(block, proof):
+        if not self.is_valid_proof(block, proof):
             return False
 
         block.hash = proof
@@ -141,7 +151,7 @@ class Blockchain:
 
         last_node = self.last_node
 
-        new_block = Block(index=last_node.block.index + 1,
+        new_block = Block(blk_height=last_node.block.blk_height + 1,
                           transactions=self.unconfirmed_transactions,
                           timestamp=time.time(),
                           previous_hash=last_node.block.hash)
@@ -149,5 +159,32 @@ class Blockchain:
         proof = self.proof_of_work(new_block)
         self.add_block(new_block, proof)
         self.unconfirmed_transactions = []
-        return new_block.index
+        return new_block.blk_height
 
+
+if __name__ == "__main__":
+    blockchain = Blockchain()
+    transactions = list()
+    for i in range(random.randint(50,100)):
+        sk = SigningKey.generate()
+        vk = sk.get_verifying_key()
+        sk1 = SigningKey.generate()
+        vk1 = sk1.get_verifying_key()
+        t = Transaction.new(vk, vk1, 4, 'r', sk)
+        s = t.serialize()
+        transactions.append(s)
+        blockchain.add_new_transaction(s)
+    print(blockchain.last_node.block.compute_hash())
+    blockchain.mine()
+    block = blockchain.last_node.block
+    print(block.previous_hash)
+    s = block.serialize()
+    b2 = Block.deserialize(s)
+    print(b2.__eq__(block))
+    proof = block.merkle.get_proof(transactions[0])
+    print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, block.merkle.get_root()))
+    proof = b2.merkle.get_proof(transactions[0])
+    print(verify_proof(MerkleTree.compute_hash(transactions[0]), proof, b2.merkle.get_root()))
+    print(b2.merkle.root.hash == block.merkle.root.hash)
+    print(block.hash)
+    print(b2.hash)

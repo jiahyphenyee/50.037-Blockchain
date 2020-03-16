@@ -31,15 +31,18 @@ def run_selfish_miner(addr):
 def run_miner(addr):
     miner = Miner.new(addr)
     while True:
-        time.sleep(3)
+        time.sleep(10)
         peer = miner.find_peer_by_type("SPVClient")
 
-        if peer is not None:
-            print(peer)
+        if peer is None:
+            print("No peers in the network")
+        else:
             peer_pubkey = peer["pubkey"]
             miner.make_transaction(peer_pubkey, 50)
-        else:
-            print("No peers in the network")
+        if len(miner.unconfirmed_transactions)>5:
+            miner.mine()
+
+
 
 
 

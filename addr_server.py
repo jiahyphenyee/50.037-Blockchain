@@ -45,11 +45,15 @@ class AddressServer:
             tcpCliSock.close()
 
     def register(self, node):
-        self.nodes.append(node)
         node_type = node["type"]
         node_address = node["address"]
+
+        self.nodes.append(node)
         print(f" Registered new node of type {node_type} : {node_address}")
         print(self.nodes)
+        return True
+
+
 
     def broadcast_message(self, msg):
         """Broadcast the message to peers"""

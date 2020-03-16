@@ -94,7 +94,7 @@ class Node:
             raise Exception("Not connected to network.")
         with ThreadPoolExecutor(max_workers=5) as executor:
             for peer in self.peers:
-                executor.submit(Node._send_message, msg, peer['address'])
+                executor.submit(Node._send_message, msg, tuple(peer['address']))
 
     def broadcast_request(self, req):
         """Broadcast the request to peers"""
@@ -102,7 +102,7 @@ class Node:
             raise Exception("Not connected to network.")
         executor = ThreadPoolExecutor(max_workers=5)
         futures = [
-            executor.submit(Node._send_request, req, peer['address'])
+            executor.submit(Node._send_request, req, tuple(peer['address']))
             for peer in self.peers
         ]
         executor.shutdown(wait=True)
@@ -123,7 +123,6 @@ class Listener:
         """Accepting connection"""
         while True:
             conn, addr = self.socket.accept()
-            print("New Connection!")
             # Start new thread to handle client
             new_thread = threading.Thread(target=self.handle_client, args=(conn,))
 
@@ -132,7 +131,6 @@ class Listener:
     def handle_client(self, tcp_client):
         """Handle receiving and sending"""
         data = tcp_client.recv(8196).decode()
-        print(f"receiving message of type {data}")
         self.handle_by_msg_type(data, tcp_client)
 
     def handle_by_msg_type(self, data, tcp_client):

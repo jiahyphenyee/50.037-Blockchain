@@ -70,5 +70,8 @@ class Block:
         block_string = json.dumps(self.header)  # The string equivalent also considers the previous_hash field now
         return sha256(block_string.encode()).hexdigest()
 
+    def __str__(self):
+        return "hash: {}, number of transactions: {}".format(self.hash,len(self.transactions)) if not self.blk_height == 0 else "root"
+
     def __eq__(self, other):
         return self.nonce == other.nonce and self.root == other.root and self.timestamp == other.timestamp and self.previous_hash == other.previous_hash

@@ -183,7 +183,15 @@ class Blockchain:
                 else:
                     dic[receiver_string] += tx.amount
         return dic
-
+    def __str__(self):
+        pprint_tree(self.root_node)
+def pprint_tree(node, file=None, _prefix="", _last=True):
+    print(_prefix, "`- " if _last else "|- ", node.block, sep="", file=file)
+    _prefix += "   " if _last else "|  "
+    child_count = len(node.children)
+    for i, child in enumerate(node.children):
+        _last = i == (child_count - 1)
+        pprint_tree(child, file, _prefix, _last)
 
 
 if __name__ == "__main__":
@@ -218,6 +226,7 @@ if __name__ == "__main__":
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
+    print(blockchain)
     # print(stringify_key(miner_public))
     # balance_addr = blockchain.get_balance()
     # print(balance_addr)

@@ -6,7 +6,7 @@ from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
 
-TARGET = "000000ffffffffff"
+TARGET = "0000ffffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
         self.block = block
@@ -61,7 +61,7 @@ class Blockchain:
         Function that tries different values of the nonce to get a hash
         that satisfies our difficulty criteria.
         """
-        block.nonce = 0
+        block.nonce = random.randint(0,1000000000)
 
         computed_hash = block.compute_hash()
         # while not computed_hash.startswith('0' * Blockchain.difficulty):
@@ -184,7 +184,7 @@ class Blockchain:
                     dic[receiver_string] += tx.amount
         return dic
 
-    def __str__(self):
+    def print(self):
         pprint_tree(self.root_node)
 
 
@@ -200,6 +200,7 @@ def pprint_tree(node, file=None, _prefix="", _last=True):
 if __name__ == "__main__":
     blockchain = Blockchain()
     print(blockchain.last_node.block,blockchain.last_node.block.blk_height)
+    blockchain.print()
     miner = SigningKey.generate()
     miner_public = miner.get_verifying_key()
     alice_private = SigningKey.generate()
@@ -229,7 +230,7 @@ if __name__ == "__main__":
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
-    print(blockchain)
+    blockchain.print()
     # print(stringify_key(miner_public))
     # balance_addr = blockchain.get_balance()
     # print(balance_addr)

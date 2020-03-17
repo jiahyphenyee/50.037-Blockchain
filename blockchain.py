@@ -6,7 +6,7 @@ from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
 
-TARGET = "00000fffffffffff"
+TARGET = "000000ffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
         self.block = block
@@ -183,8 +183,11 @@ class Blockchain:
                 else:
                     dic[receiver_string] += tx.amount
         return dic
+
     def __str__(self):
         pprint_tree(self.root_node)
+
+
 def pprint_tree(node, file=None, _prefix="", _last=True):
     print(_prefix, "`- " if _last else "|- ", node.block, sep="", file=file)
     _prefix += "   " if _last else "|  "

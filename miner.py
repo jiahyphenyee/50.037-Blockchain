@@ -281,6 +281,8 @@ if __name__ == '__main__':
         time.sleep(2)
         peer = random.choice(miner.peers)
 
+        # make transaction
+
         if peer is None:
             print("No peers known")
 

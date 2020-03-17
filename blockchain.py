@@ -218,12 +218,12 @@ if __name__ == "__main__":
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
-    print(stringify_key(miner_public))
-    balance_addr = blockchain.get_balance()
-    print(balance_addr)
-    print(balance_addr[stringify_key(miner_public)])
-    print(balance_addr[stringify_key(alice_public)])
-    print(balance_addr[stringify_key(bob_public)])
+    # print(stringify_key(miner_public))
+    # balance_addr = blockchain.get_balance()
+    # print(balance_addr)
+    # print(balance_addr[stringify_key(miner_public)])
+    # print(balance_addr[stringify_key(alice_public)])
+    # print(balance_addr[stringify_key(bob_public)])
     # proofs, block = blockchain.get_proof(transactions[0])
     # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
     # block = blockchain.last_node.block

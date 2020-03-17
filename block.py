@@ -2,6 +2,7 @@
 from merkle_tree import *
 from transaction import *
 from hashlib import sha256
+from algorithms import *
 import json
 import random
 
@@ -44,7 +45,7 @@ class Block:
         dic['transactions'] = self.transactions
         dic['blk_height'] = self.blk_height
         dic['hash'] = self.hash
-        dic['miner'] = self.miner
+        dic['miner'] = stringify_key(self.miner)
         serialized = json.dumps(dic)
         return serialized
 
@@ -53,7 +54,7 @@ class Block:
         # Instantiates/Deserializes object from CBOR or JSON string
         deserialized = json.loads(data)
         header = deserialized['header']
-        block = Block(deserialized['transactions'], header['timestamp'], header['prev_hash'], deserialized['miner'])
+        block = Block(deserialized['transactions'], header['timestamp'], header['prev_hash'], obtain_key_from_string(deserialized['miner']))
         block.nonce = header['nonce']
         block.hash = deserialized['hash']
         block.blk_height = deserialized['blk_height']

@@ -36,6 +36,7 @@ class MinerListener(Listener):
         elif msg_type == "b":  # new block
             self.node.log("======= Receive new block from peer")
             blk_json = json.loads(data[1:])["blk_json"]
+            self.log(blk_json)
             # stop mining
             self.node.set_stop_mine(True)
             # verify it if all transactions inside the block are valid

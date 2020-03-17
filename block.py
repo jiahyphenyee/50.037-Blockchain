@@ -7,7 +7,7 @@ import random
 
 
 class Block:
-    def __init__(self, transactions, timestamp,previous_hash):
+    def __init__(self, transactions, timestamp,previous_hash, miner):
         """
         Constructor for the `Block` class.
         :param transactions:  List of transactions.
@@ -26,7 +26,7 @@ class Block:
         self.nonce = 0
         self.previous_hash = previous_hash # Adding the previous hash field
         self.hash = ""
-        self.miner = 0
+        self.miner = miner
 
     @property
     def header(self):

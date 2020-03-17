@@ -6,7 +6,7 @@ from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
 
-TARGET = "ffffffffffffffff"
+TARGET = "00000fffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
         self.block = block

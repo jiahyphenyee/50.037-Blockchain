@@ -70,11 +70,7 @@ else
     done
 
   if [ -n "$double_spend" ]; then
-    python3 src/double_spend.py $((33345)) 'VENDOR' &
-    sleep 1
-    sudo nice -n -5 python3 double_spend.py $((33346)) 'MINER' &
-    sleep 1
-    python3 src/double_spend.py $((33347)) 'SPV' &
+    python3 double_spend.py $((33345)) 'MINER' &
     sleep 1
   elif [ -n "$selfish" ]; then
     sudo nice -n -5 python3 selfish.py $((33345)) &

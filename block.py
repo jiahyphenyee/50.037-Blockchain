@@ -15,7 +15,7 @@ class Block:
         :param previous_hash: Hash of the previous block in the chain which this block is part of.
         :PARAMS not included in intiliazation is hash
         """
-        self.blk_height = 0
+        self.miner = miner
         self.merkle = MerkleTree(transactions) if len(transactions) != 0 else None
         self.transactions = transactions
         if self.merkle.__eq__(None):
@@ -23,10 +23,10 @@ class Block:
         else:
             self.root = self.merkle.get_root().hash
         self.timestamp = timestamp
-        self.nonce = 0
         self.previous_hash = previous_hash # Adding the previous hash field
+        self.nonce = 0
+        self.blk_height = 0
         self.hash = ""
-        self.miner = miner
 
     @property
     def header(self):
@@ -44,6 +44,7 @@ class Block:
         dic['transactions'] = self.transactions
         dic['blk_height'] = self.blk_height
         dic['hash'] = self.hash
+        dic['miner'] = self.miner
         serialized = json.dumps(dic)
         return serialized
 
@@ -52,9 +53,10 @@ class Block:
         # Instantiates/Deserializes object from CBOR or JSON string
         deserialized = json.loads(data)
         header = deserialized['header']
-        block = Block(deserialized['blk_height'], deserialized['transactions'], header['timestamp'], header['prev_hash'])
+        block = Block(deserialized['transactions'], header['timestamp'], header['prev_hash'], deserialized['miner'])
         block.nonce = header['nonce']
         block.hash = deserialized['hash']
+        block.blk_height = deserialized['blk_height']
         return block
 
 

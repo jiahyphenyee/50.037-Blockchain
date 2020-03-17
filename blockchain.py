@@ -4,10 +4,11 @@ from ecdsa import SigningKey
 from block import Block
 from transaction import Transaction
 from merkle_tree import *
+from algorithms import *
 
 TARGET = "ffffffffffffffff"
 class Node:
-    def __init__(self, previous, block=Block( [], 0, 0)):
+    def __init__(self, previous, block=Block):
         self.block = block
         self.children = []  # the pointer initially points to nothing
         self.previous = previous
@@ -33,7 +34,7 @@ class Blockchain:
         the chain. The block has blk_height 0, previous_hash as 0, and
         a valid hash.
         """
-        genesis_block = Block([], time.time(), "0")
+        genesis_block = Block([], time.time(), "0", None)
         genesis_block.blk_height = 0
         genesis_block.hash = genesis_block.compute_hash()
         return genesis_block
@@ -162,20 +163,25 @@ class Blockchain:
         blocks = self.get_blks()
         dic = {}
         for block in blocks:
-            if block.miner not in dic.keys():
-                dic[block.miner] = 100
+            if block == self.root:
+                continue
+            miner_string = stringify_key(block.miner)
+            if miner_string not in dic.keys():
+                dic[miner_string] = 100
             else:
-                dic[block.miner] += 100
+                dic[miner_string] += 100
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
-                if tx.sender not in dic.keys():
-                    dic[tx.sender] = -tx.amount
+                sender_string = stringify_key(tx.sender)
+                if sender_string not in dic.keys():
+                    dic[sender_string] = -tx.amount
                 else:
-                    dic[tx.sender] -= tx.amount
-                if tx.receiver not in dic.keys():
-                    dic[tx.receiver] = tx.amount
+                    dic[sender_string] -= tx.amount
+                receiver_string = stringify_key(tx.receiver)
+                if receiver_string not in dic.keys():
+                    dic[receiver_string] = tx.amount
                 else:
-                    dic[tx.receiver] += tx.amount
+                    dic[receiver_string] += tx.amount
         return dic
 
 
@@ -184,37 +190,40 @@ if __name__ == "__main__":
     blockchain = Blockchain()
     print(blockchain.last_node.block,blockchain.last_node.block.blk_height)
     miner = SigningKey.generate()
-    miner_public = miner.generate()
+    miner_public = miner.get_verifying_key()
     alice_private = SigningKey.generate()
-    alice_public = alice_private.generate()
+    alice_public = alice_private.get_verifying_key()
     bob_private = SigningKey.generate()
-    bob_public = bob_private.generate()
+    bob_public = bob_private.get_verifying_key()
     for j in range(2):
         transactions = list()
-        for i in range(random.randint(10,11)):
+        # for i in range(random.randint(10,11)):
+        for i in range(3):
             sk = SigningKey.generate()
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
             vk1 = sk1.get_verifying_key()
-            t = Transaction.new(vk, vk1, 4, 'r', sk)
+            t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private)
             s = t.serialize()
             transactions.append(s)
 
-        block = Block(transactions, time.time(), blockchain.last_node.block.hash)
-        block.miner = miner_public
+        block = Block(transactions, time.time(), blockchain.last_node.block.hash,miner_public)
         proof = blockchain.proof_of_work(block)
         print(blockchain.add(block,proof))
         print(block, block.blk_height)
-    screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash)
+    screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash,miner_public)
     proof = blockchain.proof_of_work(screwedUpBlock)
     print(blockchain.add(screwedUpBlock, proof, blockchain.root))
     print(screwedUpBlock, screwedUpBlock.blk_height)
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
+    print(stringify_key(miner_public))
     balance_addr = blockchain.get_balance()
     print(balance_addr)
-    print(balance_addr[miner_public])
+    print(balance_addr[stringify_key(miner_public)])
+    print(balance_addr[stringify_key(alice_public)])
+    print(balance_addr[stringify_key(bob_public)])
     # proofs, block = blockchain.get_proof(transactions[0])
     # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
     # block = blockchain.last_node.block

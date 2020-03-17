@@ -6,6 +6,9 @@ from transaction import Transaction
 from miner import Miner, MinerListener
 from blockchain import Blockchain
 
+class SelfishMinerListener(MinerListener):
+    # TODO implement message handling
+
 class SelfishMiner(Miner):
     """Selfish Miner class"""
 

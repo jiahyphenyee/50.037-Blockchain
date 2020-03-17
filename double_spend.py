@@ -5,7 +5,6 @@ import copy
 import random
 from miner import Miner, MinerListener
 from SPVClient import SPVClient
-from addr_server import get_peers
 
 """
     Bad Players: 
@@ -19,8 +18,8 @@ class DSMiner(Miner):
     # MUTATE = 1 # a mode that start to plant private chain
     # ATTACK = 2 # a mode that publish the withheld blocks to effect double spending
 
-    def __init__(self, privkey, pubkey, address):
-        super().__init__(privkey, pubkey, address, listener=DSMinerlistener)
+    def __init__(self, privkey, pubkey, address, listener=MinerListener):
+        super().__init__(privkey, pubkey, address, listener=listener)
         #self.mode = DSMiner.NORMAL
         self.unwanted_tx = set() # a set of transactions that the DSClient wanna invalidate
         self.fork_block = None

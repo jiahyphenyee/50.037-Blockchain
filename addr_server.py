@@ -33,7 +33,6 @@ class AddressServer:
             # Start new thread to handle client
             new_thread = threading.Thread(target=self.handle_client,
                                           args=(conn,))
-            self.log("New connection!")
             new_thread.start()
 
     def handle_client(self, tcpCliSock):

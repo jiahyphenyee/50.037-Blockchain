@@ -36,17 +36,19 @@ class MinerListener(Listener):
         elif msg_type == "b":  # new block
             self.node.log("======= Receive new block from peer")
             blk_json = json.loads(data[1:])["blk_json"]
-            self.node.log(f"blk_json: {blk_json}" )
+            proof = json.loads(data[1:])["blk_proof"]
             # stop mining
             self.node.set_stop_mine(True)
             # verify it if all transactions inside the block are valid
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
             if self.node.check_final_balance(transactions):
-                self.node.blockchain.add_block(blk)
+                success_add = self.node.blockchain.add(blk, proof)
                 for tx in transactions:
-                    self.node.unconfirmed_transactions.pop(tx)
-                self.node.log("Added a new block received")
+                    if tx in self.node.unconfirmed_transactions:
+                        self.node.log()
+                        self.node.unconfirmed_transactions.remove(tx)
+                self.node.log(f"Added a new block received: {success_add} {proof}")
             else:
                 self.node.log("Invalid transactions in the new block received!")
 
@@ -101,6 +103,11 @@ class Miner(Node):
 
     def set_stop_mine(self, stop_mining):
         self._stop_mine = stop_mining
+
+    def get_own_balance(self):
+        balance = self.get_balance(stringify_key(self.pubkey))
+        self.log(f"balance = {balance}")
+
     """ inquiry """
 
     def get_transaction_proof(self, tx_hash):
@@ -128,17 +135,18 @@ class Miner(Node):
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        tx = Transaction.new(sender=self._keypair[1],
-                             receiver=obtain_key_from_string(receiver),
-                             amount=amount,
-                             comment="",
-                             key=self._keypair[0])
-        tx_json = tx.serialize()
-        self.log(" Made a new transaction")
-        self.add_transaction(tx)
-        msg = "t" + json.dumps({"tx_json": tx_json})
-        self.broadcast_message(msg)
-        return tx
+        if self.get_balance(stringify_key(self.pubkey)) >= amount:
+            tx = Transaction.new(sender=self._keypair[1],
+                                 receiver=obtain_key_from_string(receiver),
+                                 amount=amount,
+                                 comment="",
+                                 key=self._keypair[0])
+            tx_json = tx.serialize()
+            self.log(" Made a new transaction")
+            self.add_transaction(tx)
+            msg = "t" + json.dumps({"tx_json": tx_json})
+            self.broadcast_message(msg)
+            return tx
 
     def add_transaction(self, tx):
         """Add transaction to the pool of unconfirmed transactions"""
@@ -152,21 +160,33 @@ class Miner(Node):
     """ Mining """
 
     def mine(self):
+        if self.peers is None:
+            return None
 
-        # if not self.check_final_balance(tx_collection):
-        #     raise Exception("abnormal transactions!")
-        #     return None
+        self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....")
 
-        new_block, prev_block = self.create_new_block(self.get_tx_pool())
+
+        tx_collection = self.get_tx_pool()
+        if not self.check_final_balance(tx_collection):
+            raise Exception("abnormal transactions!")
+            return None
+
+        new_block, prev_block = self.create_new_block(tx_collection)
 
         proof = self.proof_of_work(new_block)
         if proof is None:
             return None
 
-        self.blockchain.add_block(new_block, proof)
-        self.broadcast_blk(new_block)
-        self.unconfirmed_transactions = []
+        self.blockchain.add(new_block, proof)
+        for tx in tx_collection:
+            self.unconfirmed_transactions.remove(tx)
+        self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
+        print("""
+                    |---------|
+                    |  block  |
+                    |---------|
+        """)
         self.set_stop_mine(False)
 
         return new_block, prev_block
@@ -186,9 +206,10 @@ class Miner(Node):
                         miner=self.pubkey)
         return new_block, last_node.block
 
-    def broadcast_blk(self, new_blk):
+    def broadcast_blk(self, new_blk, proof):
         blk_json = new_blk.serialize()
-        self.broadcast_message("b" + json.dumps({"blk_json": blk_json}))
+        self.broadcast_message("b" + json.dumps({"blk_json": blk_json,
+                                                 "blk_proof": proof}))
         self.broadcast_message("h" + json.dumps({"blk_hash": new_blk.compute_hash(),
                                                  "blk_header": new_blk.header
                                                  }))
@@ -198,16 +219,16 @@ class Miner(Node):
         Function that tries different values of the nonce to get a hash
         that satisfies our difficulty criteria.
         """
-        block.nonce = 0
-
+        start = time.time()
         computed_hash = block.compute_hash()
-
         while not computed_hash < TARGET:
-            if self.stop_mine:
+            if self._stop_mine:
                 return None
-            block.nonce += 1
+            block.nonce = random.randint(0, 100000000)
             computed_hash = block.compute_hash()
-        self.log(f"Found proof = {computed_hash} < TARGET")
+
+        end = time.time()
+        self.log(f"Found proof = {computed_hash} < TARGET in {end - start} seconds")
         return computed_hash
 
     def check_final_balance(self, transactions):
@@ -216,20 +237,22 @@ class Miner(Node):
             The balance of an account is checked to make sure it is larger than
             or equal to the spending transaction amount.
         """
-        balance = self.blockchain.get_balance
+        balance = self.blockchain.get_balance()
 
         for tx_json in transactions:
             recv_tx = Transaction.deserialize(tx_json)
             # Sender must exist so if it doesn't, return false
-            if recv_tx.sender not in balance:
+            sender = stringify_key(recv_tx.sender)
+            receiver = stringify_key(recv_tx.receiver)
+            if sender not in balance:
                 return False
             # Create new account for receiver if it doesn't exist
-            if recv_tx.receiver not in balance:
-                balance[recv_tx.receiver] = 0
-            balance[recv_tx.sender] -= recv_tx.amount
-            balance[recv_tx.receiver] += recv_tx.amount
+            if receiver not in balance:
+                balance[receiver] = 0
+            balance[sender] -= recv_tx.amount
+            balance[receiver] += recv_tx.amount
             # Negative balance, return false
-            if balance[recv_tx.sender] < 0 or balance[recv_tx.receiver] < 0:
+            if balance[sender] < 0 or balance[receiver] < 0:
                 print("Negative balance can exist!")
                 return False
         return True
@@ -239,29 +262,30 @@ class Miner(Node):
         self.broadcast_message(msg)
 
 
-def get_miner_balance(miner,identifier):
-    balance = miner.get_balance(stringify_key(identifier))
-    miner.log(f"balance = {balance}")
+
 
 
 if __name__ == '__main__':
     miner = Miner.new(("localhost", int(sys.argv[1])))
     time.sleep(5)
     while True:
-        time.sleep(5)
+        time.sleep(2)
         peer = random.choice(miner.peers)
 
         if peer is None:
-            print("No peers in the network")
+            print("No peers known")
 
         else:
-            peer_pubkey = peer["pubkey"]
-            miner.make_transaction(peer_pubkey, 1)
-            get_miner_balance(miner, identifier=miner.pubkey)
-
-        if len(miner.unconfirmed_transactions) > 5:
+            miner.blockchain.print()
             miner.mine()
-            get_miner_balance(miner, identifier=miner.pubkey)
+            miner.get_own_balance()
+
+            # peer = random.choice(miner.find_peer_by_type("SPVClient"))
+            # peer_pubkey = peer["pubkey"]
+            # miner.make_transaction(peer_pubkey, 1)
+
+
+
 
 
 

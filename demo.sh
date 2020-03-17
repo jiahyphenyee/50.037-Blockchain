@@ -83,7 +83,7 @@ else
   fi
 fi
 
-sleep 5
+sleep 2
 echo 'Initialization complete, starting demo...'
 echo ''
 touch mine_lock

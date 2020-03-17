@@ -62,16 +62,17 @@ class SPVClient(Node):
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        tx = Transaction.new(sender=self._keypair[1],
-                             receiver=receiver,
-                             amount=amount,
-                             comment="",
-                             key=self._keypair[0])
-        tx_json = tx.serialize()
-        print(f"{self.type} at {self.address} made a new transaction")
-        msg = "t" + json.dumps({"tx_json": tx_json})
-        self.broadcast_message(msg)
-        return tx
+        if self.get_balance(stringify_key(self.pubkey)) >= amount:
+            tx = Transaction.new(sender=self._keypair[1],
+                                 receiver=receiver,
+                                 amount=amount,
+                                 comment="",
+                                 key=self._keypair[0])
+            tx_json = tx.serialize()
+            print(f"{self.type} at {self.address} made a new transaction")
+            msg = "t" + json.dumps({"tx_json": tx_json})
+            self.broadcast_message(msg)
+            return tx
 
     def verify_user_transaction(self, tx):
         """Verify that transaction is in blockchain"""

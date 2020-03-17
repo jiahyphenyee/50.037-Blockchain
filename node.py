@@ -1,6 +1,4 @@
-import base64
-import socket
-import threading
+
 from algorithms import *
 from addr_server import *
 from concurrent.futures import ThreadPoolExecutor
@@ -23,7 +21,8 @@ class Node:
         self.listener = listener(address, self)
         # start the listener thread to communicate with network users
         threading.Thread(target=self.listener.run).start()
-        print(f" New {self.type} running on address: {self.address}")
+        self.log_prefix = f"{self.type} at {self.address}: "
+        self.log("Join the network")
 
     @property
     def pubkey(self):
@@ -32,6 +31,9 @@ class Node:
     @property
     def type(self):
         return self.__class__.__name__
+
+    def log(self, msg):
+        print(self.log_prefix, msg)
 
     def set_peers(self, peers):
         my_peers = []
@@ -46,8 +48,6 @@ class Node:
             "address": self.address,
             "pubkey": stringify_key(self.pubkey)
         })
-        print("registering node node: ")
-        print(msg)
         self._send_message(msg, Node.ADDR_SERVER)
 
     def find_peer_by_type(self, node_type):
@@ -139,5 +139,3 @@ class Listener:
                         + "from _NetNodeListener")
 
 
-if __name__ == "__main__":
-    pass

@@ -14,7 +14,7 @@ class AddressServer:
     PORT = 6666
 
     def __init__(self):
-        print("Starting Address Server..")
+        print(".......Starting Address Server........")
         self.nodes = []
 
         # TCP socket configuration
@@ -24,13 +24,16 @@ class AddressServer:
         self.socket.listen(5)
         threading.Thread(target=self.run).start()
 
+    def log(self, msg):
+        print("~~~~~~ Address Server ~~~~~~ : ", msg)
+
     def run(self):
         while True:
             conn, _ = self.socket.accept()
             # Start new thread to handle client
             new_thread = threading.Thread(target=self.handle_client,
                                           args=(conn,))
-            print("New connection!")
+            self.log("New connection!")
             new_thread.start()
 
     def handle_client(self, tcpCliSock):
@@ -49,11 +52,9 @@ class AddressServer:
         node_address = node["address"]
 
         self.nodes.append(node)
-        print(f" Registered new node of type {node_type} : {node_address}")
-        print(self.nodes)
+        self.log(f" Registered new {node_type} : {node_address}")
+
         return True
-
-
 
     def broadcast_message(self, msg):
         """Broadcast the message to peers"""
@@ -71,3 +72,6 @@ class AddressServer:
         finally:
             client.close()
 
+
+if __name__ == '__main__':
+    AddressServer()

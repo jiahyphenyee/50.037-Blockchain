@@ -6,7 +6,7 @@ from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
 
-TARGET = "0000ffffffffffff"
+TARGET = "00000fffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
         self.block = block
@@ -34,7 +34,7 @@ class Blockchain:
         the chain. The block has blk_height 0, previous_hash as 0, and
         a valid hash.
         """
-        genesis_block = Block([], time.time(), "0", None)
+        genesis_block = Block([], 0, "0", None)
         genesis_block.blk_height = 0
         genesis_block.hash = genesis_block.compute_hash()
         return genesis_block

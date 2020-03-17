@@ -163,13 +163,13 @@ class Blockchain:
         dic = {}
         for block in blocks:
             if block.miner not in dic.keys():
-                dic[block.miner] = 100
+                dic[block.miner.to_string()] = 100
             else:
-                dic[block.miner] += 100
+                dic[block.miner.to_string()] += 100
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
                 if tx.sender not in dic.keys():
-                    dic[tx.sender] = -tx.amount
+                    dic[tx.sender.to] = -tx.amount
                 else:
                     dic[tx.sender] -= tx.amount
                 if tx.receiver not in dic.keys():
@@ -184,19 +184,20 @@ if __name__ == "__main__":
     blockchain = Blockchain()
     print(blockchain.last_node.block,blockchain.last_node.block.blk_height)
     miner = SigningKey.generate()
-    miner_public = miner.generate()
+    miner_public = miner.get_verifying_key()
     alice_private = SigningKey.generate()
-    alice_public = alice_private.generate()
+    alice_public = alice_private.get_verifying_key()
     bob_private = SigningKey.generate()
-    bob_public = bob_private.generate()
+    bob_public = bob_private.get_verifying_key()
     for j in range(2):
         transactions = list()
-        for i in range(random.randint(10,11)):
+        # for i in range(random.randint(10,11)):
+        for i in range(3):
             sk = SigningKey.generate()
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
             vk1 = sk1.get_verifying_key()
-            t = Transaction.new(vk, vk1, 4, 'r', sk)
+            t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private)
             s = t.serialize()
             transactions.append(s)
 
@@ -215,6 +216,8 @@ if __name__ == "__main__":
     balance_addr = blockchain.get_balance()
     print(balance_addr)
     print(balance_addr[miner_public])
+    print(balance_addr[alice_public])
+    print(balance_addr[bob_public])
     # proofs, block = blockchain.get_proof(transactions[0])
     # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
     # block = blockchain.last_node.block

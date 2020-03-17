@@ -13,7 +13,7 @@ class SelfishMiner(Miner):
     """Selfish Miner class"""
 
     def __init__(self, privkey, pubkey, address, listener=MinerListener):
-        super().__init__(privkey, pubkey, address, listener=listener)
+        super().__init__(privkey, pubkey, address, listener=SelfishMinerListener)
         self.hidden_chain = copy.deepcopy(self.blockchain)
         self.hidden_blocks = 0
     

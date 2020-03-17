@@ -36,7 +36,7 @@ class MinerListener(Listener):
         elif msg_type == "b":  # new block
             self.node.log("======= Receive new block from peer")
             blk_json = json.loads(data[1:])["blk_json"]
-            self.log(blk_json)
+            self.node.log(f"blk_json: {blk_json}" )
             # stop mining
             self.node.set_stop_mine(True)
             # verify it if all transactions inside the block are valid
@@ -44,6 +44,8 @@ class MinerListener(Listener):
             transactions = blk.transactions
             if self.node.check_final_balance(transactions):
                 self.node.blockchain.add_block(blk)
+                for tx in transactions:
+                    self.node.unconfirmed_transactions.pop(tx)
                 self.node.log("Added a new block received")
             else:
                 self.node.log("Invalid transactions in the new block received!")
@@ -110,7 +112,6 @@ class Miner(Node):
     def get_balance(self, identifier):
         """Get balance given identifier ie. pubkey"""
         balance = self.blockchain.get_balance()
-        self.log(balance)
         if identifier not in balance:
             return 0
         return balance[identifier]
@@ -143,7 +144,9 @@ class Miner(Node):
         """Add transaction to the pool of unconfirmed transactions"""
         if not tx.validate():
             raise Exception("New transaction failed signature verification.")
-        self.unconfirmed_transactions.append(tx.serialize())
+        tx_json = tx.serialize()
+
+        self.unconfirmed_transactions.append(tx_json)
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
 
     """ Mining """

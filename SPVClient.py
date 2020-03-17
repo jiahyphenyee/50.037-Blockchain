@@ -21,13 +21,16 @@ class SPVCliListener(Listener):
 
     def handle_by_msg_type(self, data, tcp_client):
         """Handle client data based on msg_type"""
-        # msg_type = data[0].lower()
-        # if msg_type == "h":  # new block header
-        #
-        #     header_info = json.loads(data[1:])
-        #     self.node.add_block_header(header_info)
-        #
-        # tcp_client.close()
+        msg_type = data[0].lower()
+        if msg_type == "n":  # updates on network nodes
+            nodes = json.loads(data[1:])["nodes"]
+            self.node.set_peers(nodes)
+        elif msg_type == "h":  # new block header
+
+            header_info = json.loads(data[1:])
+            self.node.add_block_header(header_info)
+
+        tcp_client.close()
 
 
 class SPVClient(Node):
@@ -39,14 +42,17 @@ class SPVClient(Node):
     def new(cls, address):
         signing_key = ecdsa.SigningKey.generate()
         verifying_key = signing_key.get_verifying_key()
-        privkey = signing_key.to_string().hex()
-        pubkey = verifying_key.to_string().hex()
+        privkey = signing_key
+        pubkey = verifying_key
         return cls(privkey, pubkey, address)
+
+    def add_blk_header(self, header_info):
+        self.blk_headers_by_hash[header_info["blk_hash"]] = header_info["blk_header"]
 
     def get_blk_headers(self):
         """ Get headers for all blocks"""
         blk_headers = {}
-        req = "h"
+        req = "x"
         reply = self.broadcast_request(req)
         headers = json.loads(reply)["headers"]
         for blk_hash, header in headers.values():
@@ -56,9 +62,13 @@ class SPVClient(Node):
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        tx = Transaction.new(self.pubkey, receiver, amount, comment, self.privkey)
+        tx = Transaction.new(sender=self._keypair[1],
+                             receiver=receiver,
+                             amount=amount,
+                             comment="",
+                             key=self._keypair[0])
         tx_json = tx.serialize()
-        print(self.address, " made a new transaction")
+        print(f"{self.type} at {self.address} made a new transaction")
         msg = "t" + json.dumps({"tx_json": tx_json})
         self.broadcast_message(msg)
         return tx

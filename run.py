@@ -1,9 +1,13 @@
+import base64
 import sys
 import time
+import ecdsa
 from miner import Miner
 from selfish import SelfishMiner
 from SPVClient import SPVClient
-from addr_server import get_peers
+from addr_server import AddressServer
+
+
 
 def run_selfish_miner(addr):
     """
@@ -27,15 +31,27 @@ def run_selfish_miner(addr):
 def run_miner(addr):
     miner = Miner.new(addr)
     while True:
-        time.sleep(1)
+        time.sleep(10)
         peer = miner.find_peer_by_type("SPVClient")
-        if peer is not None:
-            miner.make_transaction(peer["pubkey"])
+
+        if peer is None:
+            print("No peers in the network")
+        else:
+            peer_pubkey = peer["pubkey"]
+            miner.make_transaction(peer_pubkey, 50)
+        if len(miner.unconfirmed_transactions)>5:
+            miner.mine()
+
+
 
 
 
 def run_spv(addr):
     spv = SPVClient.new(addr)
+    while True:
+        time.sleep(5)
+        peer = spv.find_peer_by_type("Miner")
+
 
 
 
@@ -43,7 +59,9 @@ def main():
     """Main function"""
     print("Start simulation!")
     try:
-        if sys.argv[1] == "miner":
+        if sys.argv[1] == "server":
+            AddressServer()
+        elif sys.argv[1] == "miner":
             run_miner(("localhost", int(sys.argv[2])))
         elif sys.argv[1] == "spv":
             run_spv(("localhost", int(sys.argv[2])))

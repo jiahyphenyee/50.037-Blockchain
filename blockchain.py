@@ -5,7 +5,7 @@ from block import Block
 from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
-
+from threading import RLock
 TARGET = "00000fffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
@@ -16,6 +16,7 @@ class Node:
 
 class Blockchain:
     difficulty = 5
+    lock = RLock()
 
     def __init__(self):
         """
@@ -185,8 +186,9 @@ class Blockchain:
         return dic
 
     def print(self):
+        RLock.acquire()
         pprint_tree(self.root_node)
-
+        RLock.release()
 
 def pprint_tree(node, file=None, _prefix="", _last=True):
     print(_prefix, "`- " if _last else "|- ", node.block, sep="", file=file)

@@ -7,6 +7,7 @@ from transaction import Transaction
 from blockchain import Blockchain, TARGET
 from algorithms import *
 from node import Node, Listener
+import threading
 
 """
 Design and implement a Miner class realizing miner's functionalities. Then, implement a simple simulator with miners running Nakamoto consensus and making transactions:
@@ -38,7 +39,7 @@ class MinerListener(Listener):
             blk_json = json.loads(data[1:])["blk_json"]
             proof = json.loads(data[1:])["blk_proof"]
             # stop mining
-            self.node.set_stop_mine(True)
+            self.node.stop_mine.set()
             # verify it if all transactions inside the block are valid
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
@@ -49,8 +50,11 @@ class MinerListener(Listener):
                         self.node.log()
                         self.node.unconfirmed_transactions.remove(tx)
                 self.node.log(f"Added a new block received: {success_add} {proof}")
+                self.node.blockchain.print()
+
             else:
                 self.node.log("Invalid transactions in the new block received!")
+            self.node.stop_mine.clear()
 
         elif msg_type == "t":  # new transaction
             self.node.log("======= Receive new transaction from peer")
@@ -89,7 +93,12 @@ class Miner(Node):
         super().__init__(privkey, pubkey, address, listener)
         self.unconfirmed_transactions = []  # data yet to get into blockchain
         self.blockchain = Blockchain()
-        self._stop_mine = False  # a indicator for whether to continue mining
+
+
+        #locks
+        self.chain_lock = threading.RLock()
+        self.tx_lock = threading.RLock()
+        self.stop_mine = threading.Event()  # a indicator for whether to continue mining
 
 
     @classmethod
@@ -100,9 +109,6 @@ class Miner(Node):
         privkey = signing_key
         pubkey = verifying_key
         return cls(privkey, pubkey, address)
-
-    def set_stop_mine(self, stop_mining):
-        self._stop_mine = stop_mining
 
     def get_own_balance(self):
         balance = self.get_balance(stringify_key(self.pubkey))
@@ -160,11 +166,10 @@ class Miner(Node):
     """ Mining """
 
     def mine(self):
-        if self.peers is None:
+        if self.peers is None and self.stop_mine.is_set():
             return None
 
         self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....")
-
 
         tx_collection = self.get_tx_pool()
         if not self.check_final_balance(tx_collection):
@@ -173,7 +178,7 @@ class Miner(Node):
 
         new_block, prev_block = self.create_new_block(tx_collection)
 
-        proof = self.proof_of_work(new_block)
+        proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
             return None
 
@@ -187,7 +192,8 @@ class Miner(Node):
                     |  block  |
                     |---------|
         """)
-        self.set_stop_mine(False)
+
+        time.sleep(1)
 
         return new_block, prev_block
 
@@ -214,16 +220,19 @@ class Miner(Node):
                                                  "blk_header": new_blk.header
                                                  }))
 
-    def proof_of_work(self, block):
+    def proof_of_work(self, block, stop_mine):
         """
         Function that tries different values of the nonce to get a hash
         that satisfies our difficulty criteria.
         """
         start = time.time()
         computed_hash = block.compute_hash()
+
         while not computed_hash < TARGET:
-            if self._stop_mine:
+            if self.stop_mine.is_set():
+                self.log("Stop Mining as others have found the block")
                 return None
+            random.seed(time.time())
             block.nonce = random.randint(0, 100000000)
             computed_hash = block.compute_hash()
 
@@ -276,7 +285,7 @@ if __name__ == '__main__':
             print("No peers known")
 
         else:
-            miner.blockchain.print()
+
             miner.mine()
             miner.get_own_balance()
 

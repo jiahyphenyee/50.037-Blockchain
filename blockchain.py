@@ -186,9 +186,9 @@ class Blockchain:
         return dic
 
     def print(self):
-        self.lock.acquire()
+        Blockchain.lock.acquire()
         pprint_tree(self.root_node)
-        self.lock.release()
+        Blockchain.lock.release()
 
 def pprint_tree(node, file=None, _prefix="", _last=True):
     print(_prefix, "`- " if _last else "|- ", node.block, sep="", file=file)

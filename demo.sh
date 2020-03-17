@@ -45,14 +45,14 @@ elif [ -n "$double_spend" ] && [ -n "$selfish" ]; then
   exit 1;
 else
   echo 'Use [CTRL+C] to stop the program if you want...'
-  python addr_server.py &
+  python3 addr_server.py &
   IDS+=($!)
   sleep 3
 
   if [ -n "$spv_client_count" ]; then
     for i in $(seq 1 $spv_client_count)
       do
-        python SPVClient.py $(($i + 22345)) &
+        python3 SPVClient.py $(($i + 22345)) &
         IDS+=($!)
         sleep 1
       done
@@ -61,23 +61,23 @@ else
   for i in $(seq 1 $miner_count)
     do
       if [ -n "$selfish" ]; then
-        python miner.py $(($i + 12345)) 's' &
+        python3 miner.py $(($i + 12345)) 's' &
       else
-        python miner.py $(($i + 12345)) $double_spend &
+        python3 miner.py $(($i + 12345)) $double_spend &
       fi
       IDS+=($!)
       sleep 1
     done
 
   if [ -n "$double_spend" ]; then
-    python src/double_spend.py $((33345)) 'VENDOR' &
+    python3 src/double_spend.py $((33345)) 'VENDOR' &
     sleep 1
-    sudo nice -n -5 python double_spend.py $((33346)) 'MINER' &
+    sudo nice -n -5 python3 double_spend.py $((33346)) 'MINER' &
     sleep 1
-    python src/double_spend.py $((33347)) 'SPV' &
+    python3 src/double_spend.py $((33347)) 'SPV' &
     sleep 1
   elif [ -n "$selfish" ]; then
-    sudo nice -n -5 python selfish.py $((33345)) &
+    sudo nice -n -5 python3 selfish.py $((33345)) &
     IDS+=($!)
     sleep 1
   fi

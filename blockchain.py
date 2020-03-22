@@ -197,12 +197,12 @@ class Blockchain:
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
                 sender_string = stringify_key(tx.sender)
-                if sender_string not in self.balance.keys():
+                if sender_string not in balance.keys():
                     balance[sender_string] = -tx.amount
                 else:
                     balance[sender_string] -= tx.amount
                 receiver_string = stringify_key(tx.receiver)
-                if receiver_string not in self.balance.keys():
+                if receiver_string not in balance.keys():
                     balance[receiver_string] = tx.amount
                 else:
                     balance[receiver_string] += tx.amount

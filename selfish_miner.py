@@ -187,7 +187,37 @@ class SelfishMiner(Node):
 
     """ Mining """
     def selfishMine(self):
+        if self.peers is None and self.stop_mine.is_set():
+            return None
 
+        self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
+        time.sleep(1)
+        tx_collection = self.get_tx_pool()
+
+        if not self.check_final_balance(tx_collection):
+            raise Exception("abnormal transactions!")
+            return None
+
+        new_block, prev_block = self.create_new_block(tx_collection)
+        proof = self.proof_of_work(new_block, self.stop_mine)
+        if proof is None:
+            return None
+
+        self.blockchain.add(new_block, proof)
+        for tx in tx_collection:
+            self.unconfirmed_transactions.remove(tx)
+            self.my_unconfirmed_txn.remove(tx)
+
+        self.broadcast_blk(new_block, proof)
+        self.log(" Mined a new block +$$$$$$$$")
+        print("""
+                    |---------|
+                    |  block  |
+                    |---------|
+        """)
+        self.blockchain.print()
+
+        return new_block, prev_block
 
 
     def mine(self):

@@ -40,6 +40,9 @@ class Blockchain:
         genesis_block.blk_height = 0
         genesis_block.hash = genesis_block.compute_hash()
         return genesis_block
+    @property
+    def length(self):
+        return self.last_node.block.blk_height
 
     @property
     def last_node(self):
@@ -235,7 +238,7 @@ if __name__ == "__main__":
     for j in range(2):
         transactions = list()
         # for i in range(random.randint(10,11)):
-        for i in range(1):
+        for i in range(2):
             sk = SigningKey.generate()
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
@@ -254,10 +257,11 @@ if __name__ == "__main__":
     print(screwedUpBlock, screwedUpBlock.blk_height)
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
-    print(blockchain.get_blks())
-    print(blockchain.get_blks())
-    print(blockchain.public_keys_nonce)
+    # print(blockchain.get_blks())
+    # print(blockchain.get_blks())
+    # print(blockchain.public_keys_nonce)
     blockchain.print()
+    print(blockchain.get_balance())
     # print(stringify_key(miner_public))
     # balance_addr = blockchain.get_balance()
     # print(balance_addr)
@@ -269,8 +273,8 @@ if __name__ == "__main__":
     # # t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private,
     # #                     blockchain.get_nonce(stringify_key(alice_public)) + 1)
     # # s = t.serialize()
-    # proofs, block = blockchain.get_proof(s)
-    # print(verify_proof(s, proofs, block.merkle.get_root().hash))
+    proofs, block = blockchain.get_proof(s)
+    print(verify_proof(s, proofs, block.merkle.get_root().hash))
     # print(verify_proof(s, proofs, block.root))
     # print(block.root)
     # print(block.merkle.get_root().hash)

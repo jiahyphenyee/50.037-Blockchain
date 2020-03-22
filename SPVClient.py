@@ -1,6 +1,6 @@
 import sys
 import time
-
+import copy
 from algorithms import *
 from node import Node, Listener
 from merkle_tree import verify_proof
@@ -142,12 +142,21 @@ class SPVClient(Node):
             self.log(f"Block Hash Not Found!")
             return False
         blk_header = self.blk_headers_by_hash[blk_hash]
-        if not verify_proof(Transaction.deserialize(tx_json), proof, blk_header["root"]):
+        if not verify_proof(tx_json, proof, blk_header["root"]):
             # Potential eclipse attack
             self.log("Transaction proof verification failed.")
             raise Exception("Transaction proof verification failed.")
+        self.log("Transaction exit in the blockchain:)")
         return True
 
+    # Attack
+    def tx_resend_attack(self, tx_json):
+        tx_json = copy.deepcopy(tx_json)
+        self.log(f" Made a copy of transaction: {tx_json}")
+        self.my_unconfirmed_txn.append(tx_json)
+        msg = "t" + json.dumps({"tx_json": tx_json})
+        self.log(f"!!!!send duplicate transaction!!!")
+        self.broadcast_message(msg)
     # STATIC METHODS
 
     @staticmethod

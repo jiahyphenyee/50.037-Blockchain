@@ -24,6 +24,7 @@ UPDATE_BAL = 36
 VERIFY_TXN = 37
 SETUP_DS = 38
 START_DS = 39
+RESEND_ATTACK=40
 
 class MyFrame(wx.Frame):
 
@@ -33,7 +34,7 @@ class MyFrame(wx.Frame):
 
     def InitUI(self):
         panel=PlayerPanel(self, sys.argv[2])
-        self.SetSize((1300, 250))
+        self.SetSize((1300, 260))
         self.SetTitle(panel.title)
         self.Center()
         self.Show(True)
@@ -84,9 +85,11 @@ class PlayerPanel(wx.Panel):
             self.btn_verify.id = VERIFY_TXN
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_verify)
 
+            self.btn_resend = wx.Button(self, label='Resend ', pos=(200, 200))
+            self.btn_resend.id = RESEND_ATTACK
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_resend)
+
             self.title = f"Spv at port {sys.argv[1]}"
-
-
 
         self.to_label = wx.StaticText(self, label='Recipient ', pos=(20, 100))
         self.to_field = wx.TextCtrl(self, pos=(100, 100), size=(60, 30))
@@ -150,6 +153,17 @@ class PlayerPanel(wx.Panel):
             self.node.setup_ds_attack()
         elif identifier == START_DS:
             self.node.ds_mine()
+        elif identifier ==RESEND_ATTACK:
+            txn_no = self.txn_no.GetValue()
+            if txn_no >= 1:
+                tx_json = self.node.interested_txn[txn_no - 1]
+                self.node.log(f"<<<Interested Transaction: {tx_json} >>>")
+                time.sleep(5)
+                if tx_json is not None:
+                    self.node.tx_resend_attack(tx_json)
+            else:
+                self.node.log("No interested transaction selected")
+
 
 
 class RedirectText(object):

@@ -193,22 +193,17 @@ class Miner(Node):
         self.unconfirmed_transactions.append(tx_json)
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
 
-    def tx_resend_check(self,tx):
+    def tx_resend_check(self, tx):
         nonce = self.blockchain.get_nonce(stringify_key(tx.sender))
+        self.log(f"most recent nonce = {nonce} vs new nonce = {tx.nonce}")
         if tx.nonce <= nonce:
-            self.log("New transaction failed resending check.")
+            self.log("New transaction failed resending check based on most updated chain.")
             return False
         else:
+            self.log("New transaction passed resending check based on most updated chain.")
             return True
 
-    def tx_resend_attack(self):
-        tx_json = copy.deepcopy(self.my_unconfirmed_txn[0])
-        self.log(f" Made a copy of transaction: {tx_json}")
-        self.my_unconfirmed_txn.append(tx_json)
-        self.add_transaction(Transaction.deserialize(tx_json))
-        msg = "t" + json.dumps({"tx_json": tx_json})
-        self.log(f"!!!!send duplicate transaction!!!")
-        self.broadcast_message(msg)
+
 
 
 

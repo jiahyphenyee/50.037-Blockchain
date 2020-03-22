@@ -168,6 +168,8 @@ class Blockchain:
         last_node = self.last_node
         while last_node.block.hash != self.root.hash and transaction not in last_node.block.transactions:
             last_node = last_node.previous
+        if last_node.block.hash == self.root.hash:
+            return None, last_node.block
         proofs = last_node.block.merkle.get_proof(transaction)
         return proofs, last_node.block
 
@@ -244,16 +246,16 @@ if __name__ == "__main__":
         proof = blockchain.proof_of_work(block)
         print(blockchain.add(block,proof))
         print(block, block.blk_height)
-    screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash,miner_public)
-    proof = blockchain.proof_of_work(screwedUpBlock)
-    print(blockchain.add(screwedUpBlock, proof, blockchain.root))
-    print(screwedUpBlock, screwedUpBlock.blk_height)
-    for node in blockchain.last_nodes:
-        print(node.block, node.block.blk_height)
-    print(blockchain.get_blks())
-    print(blockchain.get_blks())
-    print(blockchain.public_keys_nonce)
-    blockchain.print()
+    # screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash,miner_public)
+    # proof = blockchain.proof_of_work(screwedUpBlock)
+    # print(blockchain.add(screwedUpBlock, proof, blockchain.root))
+    # print(screwedUpBlock, screwedUpBlock.blk_height)
+    # for node in blockchain.last_nodes:
+    #     print(node.block, node.block.blk_height)
+    # print(blockchain.get_blks())
+    # print(blockchain.get_blks())
+    # print(blockchain.public_keys_nonce)
+    # blockchain.print()
     # print(stringify_key(miner_public))
     # balance_addr = blockchain.get_balance()
     # print(balance_addr)
@@ -262,8 +264,11 @@ if __name__ == "__main__":
     # print(balance_addr[stringify_key(bob_public)])
     print(s in blockchain.last_node.block.transactions)
     print(blockchain.last_node.block.transactions)
+    # t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private,
+    #                     blockchain.get_nonce(stringify_key(alice_public)) + 1)
+    # s = t.serialize()
     proofs, block = blockchain.get_proof(s)
-    print(verify_proof(s, proofs, block.merkle.get_root()))
+    print(verify_proof(s, proofs, block.merkle.get_root().hash))
     # block = blockchain.last_node.block
     # print(block.previous_hash)
     # s = block.serialize()

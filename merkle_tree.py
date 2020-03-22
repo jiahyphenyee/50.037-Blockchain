@@ -65,11 +65,11 @@ class MerkleTree():
                 idx = i
                 break
         if idx == -1:
-            return proofs
+            return None
 
         parent = self.leaves[idx].parent
         if parent is None:
-            return [self.leaves[idx]]
+            return proofs
         if parent.leftChild.hash == self.leaves[idx].hash:
             proofs.append(parent.rightChild)
         else:
@@ -98,10 +98,10 @@ class MerkleTree():
 def verify_proof(entry, proofs, root):
     # Verify the proof for the entry and given root. Returns boolean.
     entry = MerkleTree.compute_hash(entry)
-    if len(proofs) == 0:
+    if proofs is None:
         return False
-    if len(proofs) == 1:
-        return entry == proofs[0].hash and entry == root.hash
+    if len(proofs) == 0:
+        return entry == root
     for proof in proofs:
         if proof.isLeft:
             hash = MerkleTree.compute_hash(proof.hash + entry)
@@ -110,6 +110,6 @@ def verify_proof(entry, proofs, root):
         if hash != proof.parent.hash:
             return False
         entry = hash
-    if entry != root.hash:
+    if entry != root:
         return False
     return True

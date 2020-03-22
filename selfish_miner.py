@@ -106,9 +106,12 @@ class SelfishMiner(Node):
         super().__init__(privkey, pubkey, address, listener)
         self.unconfirmed_transactions = []  # data yet to get into blockchain
         self.blockchain = Blockchain()
+        self.private_blockchain = Blockchain()
         self.my_unconfirmed_txn = list()  # all unconfirmed transactions sent by me
 
         self.stop_mine = threading.Event()  # a indicator for whether to continue mining
+        self.privateBranchLen = 0
+
 
         # attack
         self.mode = SelfishMiner.NORMAL
@@ -183,6 +186,9 @@ class SelfishMiner(Node):
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
 
     """ Mining """
+    def selfishMine(self):
+
+
 
     def mine(self):
         if self.peers is None and self.stop_mine.is_set():

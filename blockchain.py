@@ -28,7 +28,6 @@ class Blockchain:
         self.last_nodes = []
         self.last_nodes.append(self.root_node)
         self.nodes = [self.root_node]
-        self.balance = {}
         self.public_keys_nonce = {}
 
     def create_genesis_block(self):

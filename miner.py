@@ -65,16 +65,17 @@ class MinerListener(Listener):
             tx_json = json.loads(data[1:])["tx_json"]
             self.node.log(f"transaction = {tx_json}")
             proof, hash = self.node.get_transaction_proof(tx_json)
+            self.node.log(f"blk_hash: {hash}")
+            self.node.log(f"proof: {proof}")
             if proof is None:
                 msg = "nil"
             else:
                 msg = json.dumps({
                     "merkle_path": proof,
-                    "blk_hash": hash
+                    "blk_hash": str(hash)
                 })
             tcp_client.sendall(msg.encode())
             self.node.log(f">>> Send proof to SPV")
-            self.node.log(msg)
 
         elif msg_type == "x":  # request for headers by spvclient
             self.node.log("======= Receive request for headers (SPV)")
@@ -185,10 +186,31 @@ class Miner(Node):
         """Add transaction to the pool of unconfirmed transactions and miner's own transaction list"""
         if not tx.validate():
             raise Exception("New transaction failed signature verification.")
+        if not self.tx_resend_check(tx):
+            raise Exception("New transaction failed resending check.")
         tx_json = tx.serialize()
 
         self.unconfirmed_transactions.append(tx_json)
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
+
+    def tx_resend_check(self,tx):
+        nonce = self.blockchain.get_nonce(stringify_key(tx.sender))
+        if tx.nonce <= nonce:
+            self.log("New transaction failed resending check.")
+            return False
+        else:
+            return True
+
+    def tx_resend_attack(self):
+        tx_json = copy.deepcopy(self.my_unconfirmed_txn[0])
+        self.log(f" Made a copy of transaction: {tx_json}")
+        self.my_unconfirmed_txn.append(tx_json)
+        self.add_transaction(Transaction.deserialize(tx_json))
+        msg = "t" + json.dumps({"tx_json": tx_json})
+        self.log(f"!!!!send duplicate transaction!!!")
+        self.broadcast_message(msg)
+
+
 
     """ Mining """
     def mine(self):
@@ -324,6 +346,8 @@ class Miner(Node):
                 print("Negative balance can exist!")
                 return False
         return True
+
+
 
     """DS Miner functions"""
     def get_longest_len(self, chain):

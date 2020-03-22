@@ -158,6 +158,7 @@ class SPVClient(Node):
             raise Exception("No miner replies for request.")
         # Assume majority reply is valid
         valid_reply = max(replies, key=replies.count)
+        print(f"valid reply: {valid_reply}")
 
         if valid_reply != "nil":
             return json.loads(valid_reply)

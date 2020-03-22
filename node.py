@@ -24,6 +24,7 @@ class Node:
         self.log_prefix = f"{self.type} at {self.address}: "
         self.log("Join the network")
 
+
     @property
     def pubkey(self):
         return self._keypair[1]
@@ -34,13 +35,15 @@ class Node:
 
     def log(self, msg):
         print(self.log_prefix, msg)
+        return msg
 
     def set_peers(self, peers):
         my_peers = []
         for peer in peers:
-            if peer["address"] != self.address:
+            if tuple(peer["address"]) != self.address:
                 my_peers.append(peer)
         self.peers = my_peers
+        self.log(f"Peers: {self.peers}")
 
     def register_node(self):
         msg = "n" + json.dumps({
@@ -50,6 +53,12 @@ class Node:
         })
         self._send_message(msg, Node.ADDR_SERVER)
 
+    def get_all_peer_addr(self):
+        peer_addr=[]
+        for peer in self.peers:
+            peer_addr.append(peer["address"][1])
+        return peer_addr
+
     def find_peer_by_type(self, node_type):
 
         for peer in self.peers:
@@ -57,9 +66,9 @@ class Node:
                 return peer
         return None
 
-    def find_peer_by_pubkey(self, pubkey):
+    def find_peer_by_addr(self, addr):
         for peer in self.peers:
-            if peer["pubkey"] == pubkey:
+            if tuple(peer["address"]) == addr:
                 return peer
         return None
 

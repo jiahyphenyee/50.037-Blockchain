@@ -1,3 +1,5 @@
+import sys
+import time
 
 from algorithms import *
 from node import Node, Listener
@@ -23,12 +25,14 @@ class SPVCliListener(Listener):
         """Handle client data based on msg_type"""
         msg_type = data[0].lower()
         if msg_type == "n":  # updates on network nodes
+            self.node.log("======= Receive updates on network nodes")
             nodes = json.loads(data[1:])["nodes"]
             self.node.set_peers(nodes)
         elif msg_type == "h":  # new block header
-
+            self.node.log("======= Receive new header from peer")
             header_info = json.loads(data[1:])
-            self.node.add_block_header(header_info)
+            self.node.add_blk_header(header_info)
+
 
         tcp_client.close()
 
@@ -36,7 +40,9 @@ class SPVCliListener(Listener):
 class SPVClient(Node):
     def __init__(self, privkey, pubkey, address, listener=SPVCliListener):
         super().__init__(privkey, pubkey, address, listener)
-        self.blk_headers_by_hash = self.get_blk_headers
+        self.blk_headers_by_hash = {}
+        self.balance = 0
+        self.interested_txn=[]
 
     @classmethod
     def new(cls, address):
@@ -47,24 +53,33 @@ class SPVClient(Node):
         return cls(privkey, pubkey, address)
 
     def add_blk_header(self, header_info):
-        self.blk_headers_by_hash[header_info["blk_hash"]] = header_info["blk_header"]
+        header = header_info["blk_header"]
+        if header["prev_hash"] in self.blk_headers_by_hash:
+            blk_hash = header_info["blk_hash"]
+            self.blk_headers_by_hash[blk_hash] = header
+            self.log(f"New Header hash: {blk_hash}")
+        else:
+            self.log("Header with non-existing prev-hash. Do you want to request headers?")
 
     def get_blk_headers(self):
         """ Get headers for all blocks"""
+        self.log("Requesting for block headers from full node")
         blk_headers = {}
         req = "x"
-        reply = self.broadcast_request(req)
-        headers = json.loads(reply)["headers"]
-        for blk_hash, header in headers.values():
-            blk_headers[blk_hash] = header
+        replies = self.broadcast_request(req)
+        reply = SPVClient._process_replies(replies)
+        headers = reply["headers"]
+        self.log("====== Received headers from peers: {headers}")
+        for blk_hash, header in headers.items():
+            self.blk_headers_by_hash[blk_hash] = header
+        self.log(f"current headers: {self.blk_headers_by_hash}")
 
-        return blk_headers
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
-        if self.get_balance(stringify_key(self.pubkey)) >= amount:
+        if self.balance >= amount:
             tx = Transaction.new(sender=self._keypair[1],
-                                 receiver=receiver,
+                                 receiver=obtain_key_from_string(receiver),
                                  amount=amount,
                                  comment="",
                                  key=self._keypair[0])
@@ -72,7 +87,20 @@ class SPVClient(Node):
             print(f"{self.type} at {self.address} made a new transaction")
             msg = "t" + json.dumps({"tx_json": tx_json})
             self.broadcast_message(msg)
+
             return tx
+        else:
+            self.log("Not enough balance in your account!")
+
+    def request_balance(self):
+        """Request balance from network"""
+        self.log(f"Requesting Balance from full node..")
+        req = "m" + json.dumps({"identifier": stringify_key(self.pubkey)})
+        replies = self.broadcast_request(req)
+        reply = float(SPVClient._process_replies(replies))
+        self.balance = reply
+        self.log(f"Get Balance = {reply}")
+        return reply
 
     def verify_user_transaction(self, tx):
         """Verify that transaction is in blockchain"""
@@ -111,7 +139,12 @@ class SPVClient(Node):
 
 
 if __name__ == "__main__":
-    SPVClient.new(("localhost", 6666))
+    time.sleep(2)
+    SPVClient.new(("localhost", int(sys.argv[1])))
+    time.sleep(5)
+
+
+
 
 
 

@@ -64,14 +64,13 @@ class MinerListener(Listener):
             self.node.log("======= Receive request for transaction proof")
             tx_json = json.loads(data[1:])["tx_json"]
             self.node.log(f"transaction = {tx_json}")
-            proof = self.node.get_transaction_proof(tx_json)
+            proof, hash = self.node.get_transaction_proof(tx_json)
             if proof is None:
                 msg = "nil"
             else:
                 msg = json.dumps({
-                    "blk_hash": proof[0],
-                    "merkle_path": proof[1],
-                    "last_blk_hash": proof[3],
+                    "merkle_path": proof,
+                    "blk_hash": hash
 
                 })
             tcp_client.sendall(msg.encode())
@@ -85,6 +84,13 @@ class MinerListener(Listener):
             })
             tcp_client.sendall(msg.encode())
             self.node.log(">>> Send headers to SPV")
+
+        elif msg_type == "c":  # request for nonce by spvclient
+            self.node.log("======= Receive request for nonce (SPV)")
+            identifier = json.loads(data[1:])["identifier"]
+            msg = json.dumps(self.node.blockchain.get_nonce(identifier))
+            tcp_client.sendall(msg.encode())
+            self.node.log(f">>> Send nonce = {msg} to SPV")
 
         elif msg_type == "m":  # request for balance by spvclient
             self.node.log("======= Receive request for balance (SPV)")
@@ -135,8 +141,8 @@ class Miner(Node):
     def get_transaction_proof(self, tx_json):
         """Get proof of transaction given transaction json"""
         # ask the blockchain to search each block to obtain possible proof from merkle tree
-        proof = self.blockchain.get_proof(tx_json)
-        return proof
+        proof, blk = self.blockchain.get_proof(tx_json)
+        return proof, blk.hash
 
     def get_balance(self, identifier):
         """Get balance given identifier ie. pubkey"""
@@ -196,15 +202,15 @@ class Miner(Node):
             raise Exception("abnormal transactions!")
             return None
 
-        new_block, prev_block = self.create_new_block(tx_collection)
+        new_block= self.create_new_block(tx_collection)
         proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
             return None
 
+        self.log("prev_hash")
         self.blockchain.add(new_block, proof)
         for tx in tx_collection:
             self.unconfirmed_transactions.remove(tx)
-            self.my_unconfirmed_txn.remove(tx)
 
         self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
@@ -215,7 +221,7 @@ class Miner(Node):
         """)
         self.blockchain.print()
 
-        return new_block, prev_block
+        return new_block
 
     def get_tx_pool(self):
         if self.mode == Miner.DS_ATTACK:
@@ -241,7 +247,7 @@ class Miner(Node):
                         previous_hash=last_node.block.hash,
                         miner=self.pubkey)
 
-        return new_block, last_node.block
+        return new_block
 
     def broadcast_blk(self, new_blk, proof):
         blk_json = new_blk.serialize()

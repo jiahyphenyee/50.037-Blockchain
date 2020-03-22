@@ -163,7 +163,7 @@ class Miner(Node):
                                  amount=amount,
                                  comment="",
                                  key=self._keypair[0],
-                                 nonce=self.blockchain.get_nonce(stringify_key(self.pubkey)))
+                                 nonce=self.blockchain.get_nonce(stringify_key(self.pubkey))+1+len(self.my_unconfirmed_txn))
             tx_json = tx.serialize()
             self.log(" Made a new transaction")
             self.my_unconfirmed_txn.append(tx_json)
@@ -210,7 +210,7 @@ class Miner(Node):
         self.log(" Mined a new block +$$$$$$$$")
         print("""
                     |---------|
-                    |  block  |
+                    |  block   |
                     |---------|
         """)
         self.blockchain.print()
@@ -306,7 +306,7 @@ class Miner(Node):
             return self.fork_block.blk_height + len(self.hidden_blocks)
             
     def setup_ds_attack(self):
-        """Change miner mode and take note of fork location"""
+        """Change miner to DS mode and take note of fork location"""
         self.mode = Miner.DS_MUTATE
         self.fork_block = self.get_last_node().block
         self.ds_txns = self.create_ds_txn()
@@ -333,6 +333,8 @@ class Miner(Node):
                                  nonce=tx.nonce)
             
             ds_txns.append(replacement_tx)
+
+        self.log("Finished preparing double spend transactions")
         return ds_txns
 
     def ds_mine(self):
@@ -361,7 +363,6 @@ class Miner(Node):
 
             for tx in tx_collection:
                 self.unconfirmed_transactions.remove(tx)
-                self.my_unconfirmed_txn.remove(tx)
                 
             self.log(" Mined a new block +$$$$$$$$")
             print("""

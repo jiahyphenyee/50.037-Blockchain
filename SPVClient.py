@@ -43,6 +43,7 @@ class SPVClient(Node):
         self.blk_headers_by_hash = {}
         self.balance = 0
         self.interested_txn = []
+        self.my_unconfirmed_txn = []
 
     @classmethod
     def new(cls, address):
@@ -71,26 +72,41 @@ class SPVClient(Node):
         headers = reply["headers"]
         self.log("====== Received headers from peers: {headers}")
         for blk_hash, header in headers.items():
-            self.blk_headers_by_hash[blk_hash] = header
+            blk_headers[blk_hash] = header
+        self.blk_headers_by_hash = blk_headers
         self.log(f"current headers: {self.blk_headers_by_hash}")
 
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
+        self.update_my_transactions()
+
         if self.balance >= amount:
             tx = Transaction.new(sender=self._keypair[1],
                                  receiver=obtain_key_from_string(receiver),
                                  amount=amount,
                                  comment="",
-                                 key=self._keypair[0])
+                                 key=self._keypair[0],
+                                 nonce=self.request_nonce()+1+len(self.my_unconfirmed_txn))
             tx_json = tx.serialize()
-            print(f"{self.type} at {self.address} made a new transaction")
+            self.log("Made a new transaction")
+            self.log(tx_json)
             msg = "t" + json.dumps({"tx_json": tx_json})
             self.interested_txn.append(tx_json)
+            self.my_unconfirmed_txn.append(tx_json)
             self.broadcast_message(msg)
 
             return tx
         else:
             self.log("Not enough balance in your account!")
+
+    def request_nonce(self):
+        """Request nonce from network"""
+        self.log(f"Requesting nonce from full node..")
+        req = "c" + json.dumps({"identifier": stringify_key(self.pubkey)})
+        replies = self.broadcast_request(req)
+        reply = float(SPVClient._process_replies(replies))
+        self.log(f"Get Nonce = {reply}")
+        return reply
 
     def request_balance(self):
         """Request balance from network"""
@@ -102,6 +118,11 @@ class SPVClient(Node):
         self.log(f"Get Balance = {reply}")
         return reply
 
+    def update_my_transactions(self):
+        for tx_json in self.my_unconfirmed_txn:
+            if self.verify_user_transaction(tx_json):
+                self.my_unconfirmed_txn.remove(tx_json)
+
     def verify_user_transaction(self, tx_json):
         """Verify that transaction is in blockchain"""
         self.log(f"Requesting Proof from full blockchain node")
@@ -110,21 +131,19 @@ class SPVClient(Node):
         valid_reply = SPVClient._process_replies(replies)
         blk_hash = valid_reply["blk_hash"]
         proof = valid_reply["merkle_path"]
-        last_blk_hash = valid_reply["last_blk_hash"]
         # Transaction not in blockchain
         if proof is None:
             self.log(f"No Proof Found!")
             return False
 
-        if (blk_hash not in self.blk_headers_by_hash
-                or last_blk_hash not in self.blk_headers_by_hash):
+        if blk_hash not in self.blk_headers_by_hash:
+            self.log(f"Block Hash Not Found!")
             return False
         blk_header = self.blk_headers_by_hash[blk_hash]
         if not verify_proof(Transaction.deserialize(tx_json), proof, blk_header["root"]):
             # Potential eclipse attack
             self.log("Transaction proof verification failed.")
             raise Exception("Transaction proof verification failed.")
-
         return True
 
     # STATIC METHODS

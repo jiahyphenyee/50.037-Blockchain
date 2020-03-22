@@ -24,6 +24,7 @@ UPDATE_BAL = 36
 VERIFY_TXN = 37
 SETUP_DS = 38
 START_DS = 39
+RESEND_ATTACK=40
 
 class MyFrame(wx.Frame):
 
@@ -33,7 +34,7 @@ class MyFrame(wx.Frame):
 
     def InitUI(self):
         panel=PlayerPanel(self, sys.argv[2])
-        self.SetSize((1300, 250))
+        self.SetSize((1300, 260))
         self.SetTitle(panel.title)
         self.Center()
         self.Show(True)
@@ -52,6 +53,9 @@ class PlayerPanel(wx.Panel):
         self.btn_join.id = JOIN_NETWORK
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_join)
 
+        self.btn_balance = wx.Button(self, label='Balance Update', pos=(200, 20))
+        self.btn_balance.id = UPDATE_BAL
+        self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
 
         if type == "m":
@@ -62,10 +66,10 @@ class PlayerPanel(wx.Panel):
             self.title = f"Miner at port {sys.argv[1]}"
 
             """DS Miner Functions"""
-            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(60, 100))
+            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(200, 100))
             self.btn_dssetup.id = SETUP_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
-            self.btn_dsstart = wx.Button(self, label='Setup DS', pos=(60, 180))
+            self.btn_dsstart = wx.Button(self, label='Setup DS', pos=(200, 150))
             self.btn_dsstart.id = START_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
 
@@ -84,9 +88,11 @@ class PlayerPanel(wx.Panel):
             self.btn_verify.id = VERIFY_TXN
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_verify)
 
+            self.btn_resend = wx.Button(self, label='Resend ', pos=(200, 200))
+            self.btn_resend.id = RESEND_ATTACK
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_resend)
+
             self.title = f"Spv at port {sys.argv[1]}"
-
-
 
         self.to_label = wx.StaticText(self, label='Recipient ', pos=(20, 100))
         self.to_field = wx.TextCtrl(self, pos=(100, 100), size=(60, 30))
@@ -121,12 +127,16 @@ class PlayerPanel(wx.Panel):
                 self.node = SPVClient.new(("localhost", int(sys.argv[1])))
         elif identifier == START_MINE:
             self.node.mine()
+            time.sleep(2)
             self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
         elif identifier == GET_HEADER:
             self.node.get_blk_headers()
         elif identifier == UPDATE_BAL:
-            balance = self.node.request_balance()
-            self.balance_value.SetLabel(str(balance) + "  ")
+            if self.type == "s":
+                balance = self.node.request_balance()
+                self.balance_value.SetLabel(str(balance) + "  ")
+            elif self.type == "m":
+                self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
         elif identifier == VERIFY_TXN:
             txn_no = self.txn_no.GetValue()
             if txn_no >= 1:
@@ -150,6 +160,17 @@ class PlayerPanel(wx.Panel):
             self.node.setup_ds_attack()
         elif identifier == START_DS:
             self.node.ds_mine()
+        elif identifier ==RESEND_ATTACK:
+            txn_no = self.txn_no.GetValue()
+            if txn_no >= 1:
+                tx_json = self.node.interested_txn[txn_no - 1]
+                self.node.log(f"<<<Interested Transaction: {tx_json} >>>")
+                time.sleep(5)
+                if tx_json is not None:
+                    self.node.tx_resend_attack(tx_json)
+            else:
+                self.node.log("No interested transaction selected")
+
 
 
 class RedirectText(object):

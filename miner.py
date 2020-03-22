@@ -65,13 +65,14 @@ class MinerListener(Listener):
             tx_json = json.loads(data[1:])["tx_json"]
             self.node.log(f"transaction = {tx_json}")
             proof, hash = self.node.get_transaction_proof(tx_json)
+            self.node.log(f"blk_hash: {hash}")
+            self.node.log(f"proof: {proof}")
             if proof is None:
                 msg = "nil"
             else:
                 msg = json.dumps({
                     "merkle_path": proof,
-                    "blk_hash": hash
-
+                    "blk_hash": str(hash)
                 })
             tcp_client.sendall(msg.encode())
             self.node.log(f">>> Send proof to SPV")
@@ -119,9 +120,10 @@ class Miner(Node):
 
         #attack
         self.mode = Miner.NORMAL
+        self.private_chain = None
         self.hidden_blocks_num = 0
         self.hidden_blocks = list()
-        self.fork_node = None
+        self.fork_block = None
 
     @classmethod
     def new(cls, address):
@@ -134,7 +136,7 @@ class Miner(Node):
 
     def get_own_balance(self):
         balance = self.get_balance(stringify_key(self.pubkey))
-        #self.log(f"balance = {balance}")
+        self.log(f"balance = {balance}")
         return balance
 
     """ inquiry """
@@ -185,10 +187,26 @@ class Miner(Node):
         """Add transaction to the pool of unconfirmed transactions and miner's own transaction list"""
         if not tx.validate():
             raise Exception("New transaction failed signature verification.")
+        if not self.tx_resend_check(tx):
+            raise Exception("New transaction failed resending check.")
         tx_json = tx.serialize()
 
         self.unconfirmed_transactions.append(tx_json)
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
+
+    def tx_resend_check(self, tx):
+        nonce = self.blockchain.get_nonce(stringify_key(tx.sender))
+        self.log(f"most recent nonce = {nonce} vs new nonce = {tx.nonce}")
+        if tx.nonce <= nonce:
+            self.log("New transaction failed resending check based on most updated chain.")
+            return False
+        else:
+            self.log("New transaction passed resending check based on most updated chain.")
+            return True
+
+
+
+
 
     """ Mining """
     def mine(self):
@@ -254,19 +272,19 @@ class Miner(Node):
         """returns last block of specified chain"""
         if self.mode == Miner.DS_ATTACK:
             if self.hidden_blocks_num == 0:
-                return self.fork_node
+                return self.fork_block
             else:
                 return self.hidden_blocks[self.hidden_blocks_num-1]
 
         else:
-            return self.blockchain.last_node
+            return self.blockchain.last_node.block
 
     def create_new_block(self, tx_collection):
         last_node = self.get_last_node()
 
         new_block = Block(transactions=tx_collection,
                         timestamp=time.time(),
-                        previous_hash=last_node.block.hash,
+                        previous_hash=last_node.hash,
                         miner=self.pubkey)
 
         return new_block
@@ -325,18 +343,23 @@ class Miner(Node):
                 return False
         return True
 
+
+
     """DS Miner functions"""
     def get_longest_len(self, chain):
         """Get length of longest chain"""
         if chain == "public":
             return self.blockchain.last_node.block.blk_height
         else:
-            return self.fork_node.block.blk_height + self.hidden_blocks_num
+            return self.private_chain.last_node.block.blk_height
+            #return self.fork_node.block.blk_height + self.hidden_blocks_num
             
     def setup_ds_attack(self):
         """Change miner to DS mode and take note of fork location"""
         self.mode = Miner.DS_MUTATE
-        self.fork_node = self.get_last_node()
+        self.log(f"Current miner mode is now {self.mode}")
+        self.fork_block = self.get_last_node()
+        self.private_chain = copy.deepcopy(self.blockchain)
         self.ds_txns = self.create_ds_txn()
         self.log("Ready for DS attack")
         
@@ -366,12 +389,16 @@ class Miner(Node):
         return ds_txns
 
     def ds_mine(self):
-        if self.mode != Miner.DS_MUTATE:
-            self.log("Current Miner mode is not DS_MUTATE, it is {}".format(self.mode))
+        if self.mode == Miner.NORMAL:
+            self.log(f"Current Miner mode is not {self.DS_MUTATE}, it is {self.mode}")
             raise Exception("Normal Miner cannot double spend")
 
         # if hidden chain is longer than public chain, no longer need to mine, just publish
+        pub = self.get_longest_len("public")
+        priv = self.get_longest_len("hidden")
+        self.log(f"Checking if my private chain, {priv} > public chain {pub}")
         if self.get_longest_len("public") < self.get_longest_len("hidden"):
+            self.log("Hidden Chain is now longer than public blockchain")
             self.ds_broadcast()
             return
         else:
@@ -382,13 +409,13 @@ class Miner(Node):
             if not self.check_final_balance(tx_collection):
                 raise Exception("abnormal transactions!")
 
-            new_block, prev_block = self.create_new_block(tx_collection)
+            new_block = self.create_new_block(tx_collection)
 
             proof = self.proof_of_work(new_block, self.stop_mine)
             if proof is None:
                 return None
 
-            self.blockchain.add_block(new_block, proof, self.get_last_node().block)
+            self.private_chain.add_block(new_block, proof)
             self.hidden_blocks.append(new_block)
             self.hidden_blocks_num += 1
 
@@ -404,25 +431,26 @@ class Miner(Node):
             """)
             self.blockchain.print()
 
-            return new_block, prev_block
+            return new_block
 
     def ds_broadcast(self):
         if self.mode != Miner.DS_ATTACK:
             raise Exception("Miner is not in attacking mode")
 
         self.log("Starting DS chain braodcast")
-        blocks = miner.blockchain.get_blks()
+        blocks = miner.private_chain.get_blks()
 
-        for i in range(-self.hidden_blocks_num + 1, 0, 1):
+        for i in range(self.hidden_blocks_num - 1, 0, -1):
+            self.log(f"Broadcasting block number {i} out of {self.hidden_blocks_num}")
             self.broadcast_blk(blocks[i], blocks[i].hash)
-            time.sleep(1)
+            time.sleep(2)
         
         self.end_ds_attack()
 
     def end_ds_attack(self):
         self.log("Ended DS attack")
         self.hidden_blocks_num = 0
-        self.fork_node = None
+        self.fork_block = None
         self.mode = Miner.NORMAL
 
 if __name__ == '__main__':

@@ -129,6 +129,8 @@ class SPVClient(Node):
         req = "r" + json.dumps({"tx_json": tx_json})
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
+        if valid_reply is None:
+            return False
         blk_hash = valid_reply["blk_hash"]
         proof = valid_reply["merkle_path"]
         # Transaction not in blockchain
@@ -156,7 +158,12 @@ class SPVClient(Node):
             raise Exception("No miner replies for request.")
         # Assume majority reply is valid
         valid_reply = max(replies, key=replies.count)
-        return json.loads(valid_reply)
+
+        if valid_reply != "nil":
+            return json.loads(valid_reply)
+        else:
+            print(f"No Valid Reply")
+            return None
 
 
 if __name__ == "__main__":

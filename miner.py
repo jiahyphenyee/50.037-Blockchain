@@ -71,10 +71,10 @@ class MinerListener(Listener):
                 msg = json.dumps({
                     "merkle_path": proof,
                     "blk_hash": hash
-
                 })
             tcp_client.sendall(msg.encode())
             self.node.log(f">>> Send proof to SPV")
+            self.node.log(msg)
 
         elif msg_type == "x":  # request for headers by spvclient
             self.node.log("======= Receive request for headers (SPV)")
@@ -133,7 +133,7 @@ class Miner(Node):
 
     def get_own_balance(self):
         balance = self.get_balance(stringify_key(self.pubkey))
-        #self.log(f"balance = {balance}")
+        self.log(f"balance = {balance}")
         return balance
 
     """ inquiry """

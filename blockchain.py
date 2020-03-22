@@ -5,7 +5,6 @@ from block import Block
 from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
-from threading import RLock
 TARGET = "00000fffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
@@ -16,7 +15,6 @@ class Node:
 
 class Blockchain:
     difficulty = 5
-    lock = RLock()
 
     def __init__(self):
         """
@@ -131,7 +129,7 @@ class Blockchain:
     # def add_new_transaction(self, transaction):
     #     self.unconfirmed_transactions.append(transaction)
 
-    def add(self, new_block, proof, previous_block=None):
+    def add(self, new_block, proof):
         """
         This function serves as an interface to add a new block
          to the blockchain after verifying the proof of work

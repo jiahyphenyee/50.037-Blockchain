@@ -22,6 +22,8 @@ VALIDATE_TXN = 34
 GET_HEADER = 35
 UPDATE_BAL = 36
 VERIFY_TXN = 37
+SETUP_DS = 38
+START_DS = 39
 
 class MyFrame(wx.Frame):
 
@@ -58,6 +60,15 @@ class PlayerPanel(wx.Panel):
             self.btn_mine.id = START_MINE
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
             self.title = f"Miner at port {sys.argv[1]}"
+
+            """DS Miner Functions"""
+            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(60, 100))
+            self.btn_dssetup.id = SETUP_DS
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
+            self.btn_dsstart = wx.Button(self, label='Setup DS', pos=(60, 180))
+            self.btn_dsstart.id = START_DS
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
+
         if type == "s":
             self.btn_balance = wx.Button(self, label='Balance Update  ', pos=(200, 20))
             self.btn_balance.id = UPDATE_BAL
@@ -135,6 +146,10 @@ class PlayerPanel(wx.Panel):
             self.node.make_transaction(receiver=receiver_pubkey, amount=float(self.amt_field.GetValue()))
             if self.type == "s":
                 self.txn_no.SetMax(len(self.node.interested_txn))
+        elif identifier == SETUP_DS:
+            self.node.setup_ds_attack()
+        elif identifier == START_DS:
+            self.node.ds_mine()
 
 
 class RedirectText(object):

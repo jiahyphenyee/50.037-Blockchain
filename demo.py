@@ -24,6 +24,7 @@ UPDATE_BAL = 36
 VERIFY_TXN = 37
 SETUP_DS = 38
 START_DS = 39
+UPDATE_MBAL = 40
 
 class MyFrame(wx.Frame):
 
@@ -52,27 +53,26 @@ class PlayerPanel(wx.Panel):
         self.btn_join.id = JOIN_NETWORK
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_join)
 
+        self.btn_balance = wx.Button(self, label='Balance Update', pos=(200, 20))
+        self.btn_balance.id = UPDATE_BAL
+        self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
 
         if type == "m":
-            self.balance_label = wx.StaticText(self, label='Balance:  ', pos=(200, 20))
             self.btn_mine = wx.Button(self, label='Start Mining', pos=(20, 60))
             self.btn_mine.id = START_MINE
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
             self.title = f"Miner at port {sys.argv[1]}"
 
             """DS Miner Functions"""
-            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(60, 100))
+            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(200, 100))
             self.btn_dssetup.id = SETUP_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
-            self.btn_dsstart = wx.Button(self, label='Setup DS', pos=(60, 180))
+            self.btn_dsstart = wx.Button(self, label='Start DS', pos=(200, 150))
             self.btn_dsstart.id = START_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
 
         if type == "s":
-            self.btn_balance = wx.Button(self, label='Balance Update  ', pos=(200, 20))
-            self.btn_balance.id = UPDATE_BAL
-            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
 
             self.btn_hd = wx.Button(self, label='Get Headers', pos=(20, 60))
             self.btn_hd.id = GET_HEADER
@@ -121,12 +121,16 @@ class PlayerPanel(wx.Panel):
                 self.node = SPVClient.new(("localhost", int(sys.argv[1])))
         elif identifier == START_MINE:
             self.node.mine()
+            time.sleep(2)
             self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
         elif identifier == GET_HEADER:
             self.node.get_blk_headers()
         elif identifier == UPDATE_BAL:
-            balance = self.node.request_balance()
-            self.balance_value.SetLabel(str(balance) + "  ")
+            if self.type == "s":
+                balance = self.node.request_balance()
+                self.balance_value.SetLabel(str(balance) + "  ")
+            elif self.type == "m":
+                self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
         elif identifier == VERIFY_TXN:
             txn_no = self.txn_no.GetValue()
             if txn_no >= 1:

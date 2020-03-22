@@ -33,6 +33,7 @@ class MinerListener(Listener):
             self.node.log("======= Receive updates on network nodes")
             nodes = json.loads(data[1:])["nodes"]
             self.node.set_peers(nodes)
+            self.node.log(f"Peers: {self.node.peers}")
 
         elif msg_type == "b":  # new block
             self.node.log("======= Receive new block from peer")
@@ -112,7 +113,8 @@ class Miner(Node):
 
     def get_own_balance(self):
         balance = self.get_balance(stringify_key(self.pubkey))
-        self.log(f"balance = {balance}")
+        #self.log(f"balance = {balance}")
+        return balance
 
     """ inquiry """
 
@@ -164,14 +166,15 @@ class Miner(Node):
         self.log(f"{len(self.unconfirmed_transactions)} number of unconfirmed transactions")
 
     """ Mining """
-
     def mine(self):
         if self.peers is None and self.stop_mine.is_set():
             return None
 
-        self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....")
-
+        self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
+        time.sleep(1)
         tx_collection = self.get_tx_pool()
+
+        self.log(f"collected Transaction = {len(tx_collection)}")
         if not self.check_final_balance(tx_collection):
             raise Exception("abnormal transactions!")
             return None
@@ -189,11 +192,10 @@ class Miner(Node):
         self.log(" Mined a new block +$$$$$$$$")
         print("""
                     |---------|
-                    |  block  |
+                    |   block   |
                     |---------|
         """)
-
-        time.sleep(1)
+        self.blockchain.print()
 
         return new_block, prev_block
 
@@ -266,9 +268,6 @@ class Miner(Node):
                 return False
         return True
 
-    def test_connection(self):
-        msg = "peer"
-        self.broadcast_message(msg)
 
 
 

@@ -1,3 +1,5 @@
+import sys
+import time
 
 from algorithms import *
 from node import Node, Listener
@@ -36,7 +38,7 @@ class SPVCliListener(Listener):
 class SPVClient(Node):
     def __init__(self, privkey, pubkey, address, listener=SPVCliListener):
         super().__init__(privkey, pubkey, address, listener)
-        self.blk_headers_by_hash = self.get_blk_headers
+        self.blk_headers_by_hash = {}
 
     @classmethod
     def new(cls, address):
@@ -111,7 +113,12 @@ class SPVClient(Node):
 
 
 if __name__ == "__main__":
-    SPVClient.new(("localhost", 6666))
+    time.sleep(2)
+    SPVClient.new(("localhost", int(sys.argv[1])))
+    time.sleep(5)
+
+
+
 
 
 

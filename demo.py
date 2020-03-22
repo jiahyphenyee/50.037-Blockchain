@@ -46,16 +46,15 @@ class PlayerPanel(wx.Panel):
         self.node = None
         self.title = None
 
-        self.btn_join = wx.Button(self, label='Join Network', pos=(50, 20))
+        self.btn_join = wx.Button(self, label='Join Network', pos=(20, 20))
         self.btn_join.id = JOIN_NETWORK
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_join)
-
 
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
 
         if type == "m":
             self.balance_label = wx.StaticText(self, label='Balance:  ', pos=(200, 20))
-            self.btn_mine = wx.Button(self, label='Start Mining', pos=(50, 60))
+            self.btn_mine = wx.Button(self, label='Start Mining', pos=(20, 60))
             self.btn_mine.id = START_MINE
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
             self.title = f"Miner at port {sys.argv[1]}"
@@ -64,22 +63,31 @@ class PlayerPanel(wx.Panel):
             self.btn_balance.id = UPDATE_BAL
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
 
-            self.btn_hd = wx.Button(self, label='Get Headers', pos=(50, 60))
+            self.btn_hd = wx.Button(self, label='Get Headers', pos=(20, 60))
             self.btn_hd.id = GET_HEADER
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_hd)
+
+            self.interested_txn = wx.StaticText(self, label='Interested \nTxn No.:  ', pos=(200, 100))
+            self.txn_no = wx.SpinCtrl(self, pos=(200, 140), size=(80, 30), min=0, max=0, initial=0)
+            self.btn_verify = wx.Button(self, label='Verify', pos=(200, 180))
+            self.btn_verify.id = VERIFY_TXN
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_verify)
+
             self.title = f"Spv at port {sys.argv[1]}"
 
-        self.to_label = wx.StaticText(self, label='Recipient ', pos=(50, 100))
-        self.to_field = wx.TextCtrl(self, pos=(120, 100), size=(100, 30))
 
-        self.amt_label = wx.StaticText(self, label='Amount ', pos=(50, 140))
-        self.amt_field = wx.TextCtrl(self, pos=(120, 140), size=(100, 30))
 
-        self.btn_txn = wx.Button(self, label='Make A Transaction', pos=(50, 180))
+        self.to_label = wx.StaticText(self, label='Recipient ', pos=(20, 100))
+        self.to_field = wx.TextCtrl(self, pos=(100, 100), size=(60, 30))
+
+        self.amt_label = wx.StaticText(self, label='Amount ', pos=(20, 140))
+        self.amt_field = wx.TextCtrl(self, pos=(100, 140), size=(60, 30))
+
+        self.btn_txn = wx.Button(self, label='Make A Transaction', pos=(20, 180))
         self.btn_txn.id = MAKE_TXN
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_txn, id=MAKE_TXN)
 
-        self.logger = wx.TextCtrl(self, pos=(350, 20), size=(900, 200), style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.logger = wx.TextCtrl(self, pos=(370, 20), size=(900, 200), style=wx.TE_MULTILINE | wx.TE_READONLY)
 
         redir = RedirectText(self.logger)
         sys.stdout = redir
@@ -109,16 +117,24 @@ class PlayerPanel(wx.Panel):
             balance = self.node.request_balance()
             self.balance_value.SetLabel(str(balance) + "  ")
         elif identifier == VERIFY_TXN:
-            pass
-            # self.node.verify_user_transaction(tx=)
+            txn_no = self.txn_no.GetValue()
+            if txn_no >= 1:
+                tx_json = self.node.interested_txn[txn_no - 1]
+                self.node.log(f"<<<Interested Transaction: {tx_json} >>>")
+                time.sleep(5)
+                if tx_json is not None:
+                    self.node.verify_user_transaction(tx_json)
+            else:
+                self.node.log("No interested transaction selected")
         elif identifier == MAKE_TXN:
             receiver_port = self.to_field.GetValue()
             receiver_node = self.node.find_peer_by_addr(("localhost", int(receiver_port)))
             print(f"receiver node = {receiver_node}")
             receiver_pubkey = receiver_node["pubkey"]
             print(f"found receiver pubkey = {receiver_pubkey}")
-
             self.node.make_transaction(receiver=receiver_pubkey, amount=float(self.amt_field.GetValue()))
+            if self.type == "s":
+                self.txn_no.SetMax(len(self.node.interested_txn))
 
 
 class RedirectText(object):

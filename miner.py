@@ -63,7 +63,8 @@ class MinerListener(Listener):
         elif msg_type == "r":  # request for transaction proof
             self.node.log("======= Receive request for transaction proof")
             tx_json = json.loads(data[1:])["tx_json"]
-            proof = self.node.get_transaction_proof(Transaction.deserialize(tx_json))
+            self.node.log(f"transaction = {tx_json}")
+            proof = self.node.get_transaction_proof(tx_json)
             if proof is None:
                 msg = "nil"
             else:
@@ -74,6 +75,7 @@ class MinerListener(Listener):
 
                 })
             tcp_client.sendall(msg.encode())
+            self.node.log(f">>> Send proof to SPV")
 
         elif msg_type == "x":  # request for headers by spvclient
             self.node.log("======= Receive request for headers (SPV)")
@@ -82,14 +84,14 @@ class MinerListener(Listener):
                 "headers": headers
             })
             tcp_client.sendall(msg.encode())
-            self.node.log(">>> send headers to SPV")
+            self.node.log(">>> Send headers to SPV")
 
         elif msg_type == "m":  # request for balance by spvclient
             self.node.log("======= Receive request for balance (SPV)")
             identifier = json.loads(data[1:])["identifier"]
             msg = json.dumps(self.node.get_balance(identifier))
             tcp_client.sendall(msg.encode())
-            self.node.log(f">>> send balance = {msg} to SPV")
+            self.node.log(f">>> Send balance = {msg} to SPV")
 
         tcp_client.close()
 
@@ -102,10 +104,6 @@ class Miner(Node):
         self.unconfirmed_transactions = []  # data yet to get into blockchain
         self.blockchain = Blockchain()
 
-
-        #locks
-        self.chain_lock = threading.RLock()
-        self.tx_lock = threading.RLock()
         self.stop_mine = threading.Event()  # a indicator for whether to continue mining
 
 
@@ -125,10 +123,10 @@ class Miner(Node):
 
     """ inquiry """
 
-    def get_transaction_proof(self, tx_hash):
-        """Get proof of transaction given transaction hash"""
+    def get_transaction_proof(self, tx_json):
+        """Get proof of transaction given transaction json"""
         # ask the blockchain to search each block to obtain possible proof from merkle tree
-        proof = self.blockchain.get_proof(tx_hash)
+        proof = self.blockchain.get_proof(tx_json)
         return proof
 
     def get_balance(self, identifier):

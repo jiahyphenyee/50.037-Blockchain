@@ -58,23 +58,24 @@ def preImage(image):
 
 
 class Transaction:
-    def __init__(self, sender, receiver, amount, comment, signature=b""):
+    def __init__(self, sender, receiver, amount, comment, nonce, signature=b""):
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
         self.comment = comment
         self.signature = signature
+        self.nonce = nonce
 
 
     # Instantiates object from passed values
 
     @classmethod
-    def new(cls, sender, receiver, amount, comment, key):
+    def new(cls, sender, receiver, amount, comment, key, nonce):
         # cls.sender = sender  # a public key of sender
         # cls.receiver = receiver  # a public key of receiver
         # cls.amount = amount  # transaction amount, an interger>0
         # cls.comment = comment  # arbitary text can be empty
-        transaction = cls(sender, receiver, amount, comment)
+        transaction = cls(sender, receiver, amount, comment, nonce)
         transaction.signature = transaction.sign(key)
         return transaction
 
@@ -83,6 +84,7 @@ class Transaction:
         dic = {}
         dic['sender'] = base64.encodebytes(self.sender.to_string()).decode('ascii')
         dic['receiver'] = base64.encodebytes(self.receiver.to_string()).decode("ascii")
+        dic['nonce'] = self.nonce
         dic['amount'] = self.amount
         dic['comment'] = self.comment
         serialized = json.dumps(dic)
@@ -93,6 +95,7 @@ class Transaction:
         dic = {}
         dic['sender'] = base64.encodebytes(self.sender.to_string()).decode('ascii')
         dic['receiver'] = base64.encodebytes(self.receiver.to_string()).decode("ascii")
+        dic['nonce'] = self.nonce
         dic['amount'] = self.amount
         dic['comment'] = self.comment
         dic['signature'] = base64.encodebytes(self.signature).decode('ascii')
@@ -108,7 +111,7 @@ class Transaction:
         deserialized['signature'] = deserialized['signature'].encode('ascii')
         trans = Transaction(ecdsa.VerifyingKey.from_string(base64.decodebytes(deserialized['sender'])),
                   ecdsa.VerifyingKey.from_string(base64.decodebytes(deserialized['receiver'])),
-                  deserialized['amount'], deserialized['comment'], base64.decodebytes(deserialized['signature']))
+                  deserialized['amount'], deserialized['comment'], deserialized['nonce'], base64.decodebytes(deserialized['signature']))
         try:
             if trans.validate():
                 return trans

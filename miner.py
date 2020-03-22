@@ -119,8 +119,9 @@ class Miner(Node):
 
         #attack
         self.mode = Miner.NORMAL
-        self.hidden_blocks = 0
-        self.fork_block = None
+        self.hidden_blocks_num = 0
+        self.hidden_blocks = list()
+        self.fork_node = None
 
     @classmethod
     def new(cls, address):
@@ -197,6 +198,7 @@ class Miner(Node):
         self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
         time.sleep(1)
         tx_collection = self.get_tx_pool()
+        self.log(f"Number of unconfirmed transactions I'm mining on {len(self.get_tx_pool())}")
 
         if not self.check_final_balance(tx_collection):
             raise Exception("abnormal transactions!")
@@ -216,7 +218,7 @@ class Miner(Node):
         self.log(" Mined a new block +$$$$$$$$")
         print("""
                     |---------|
-                    |  block   |
+                    |   block  |
                     |---------|
         """)
         self.blockchain.print()
@@ -225,18 +227,38 @@ class Miner(Node):
 
     def get_tx_pool(self):
         if self.mode == Miner.DS_ATTACK:
-            all_unconfirmed = copy.deepcopy(self.unconfirmed_transactions)
+            # all_unconfirmed = copy.deepcopy(self.unconfirmed_transactions)
 
-            if len(self.my_unconfirmed_txn) != len(self.ds_txns):
-                raise Exception("Double spend transactions wrongly replaced")
+            # if len(self.my_unconfirmed_txn) != len(self.ds_txns):
+            #     raise Exception("Double spend transactions wrongly replaced")
+            # self.log(f"****DEBUG IN DS****\nMy DS transactions is {len(self.ds_txns)}")
+            # self.log(f"All unconfirmed transactions is {len(all_unconfirmed)}\n")
+            # self.log(f"My unconfirmed transactions is {len(self.my_unconfirmed_txn)}")
+            # self.log(f"Differnce {len(list(set(all_unconfirmed) - set(self.my_unconfirmed_txn)))}")
 
-            pool = list(set(all_unconfirmed) - set(self.my_unconfirmed_txn)).append(self.ds_txns) 
+            # for x in all_unconfirmed:
+            #     for y in self.my_unconfirmed_txn:
+            #         if y == x:
+            #             all_unconfirmed.remove(y)
+
+            # pool = all_unconfirmed.append(self.ds_txns)
+            # print(f"Length of final pool: {len(pool)}")
+            pool = copy.deepcopy(self.ds_txns)
         else:
             pool = copy.deepcopy(self.unconfirmed_transactions)
 
+        self.log(f"****DEBUG****\nCurrent no. of unconfirmed transaction pool is {len(pool)} for miner in mode: {self.mode}")
         return pool
 
     def get_last_node(self):
+        """returns last block of specified chain"""
+        if self.mode == Miner.DS_ATTACK:
+            if self.hidden_blocks_num == 0:
+                return self.fork_node
+            else:
+                return self.hidden_blocks[self.hidden_blocks_num-1]
+
+        else:
             return self.blockchain.last_node
 
     def create_new_block(self, tx_collection):
@@ -309,12 +331,12 @@ class Miner(Node):
         if chain == "public":
             return self.blockchain.last_node.block.blk_height
         else:
-            return self.fork_block.blk_height + len(self.hidden_blocks)
+            return self.fork_node.block.blk_height + self.hidden_blocks_num
             
     def setup_ds_attack(self):
         """Change miner to DS mode and take note of fork location"""
         self.mode = Miner.DS_MUTATE
-        self.fork_block = self.get_last_node().block
+        self.fork_node = self.get_last_node()
         self.ds_txns = self.create_ds_txn()
         self.log("Ready for DS attack")
         
@@ -337,14 +359,15 @@ class Miner(Node):
                                  comment=tx.comment,
                                  key=self._keypair[0],
                                  nonce=tx.nonce)
-            
-            ds_txns.append(replacement_tx)
+            replacement_tx_json = replacement_tx.serialize()
+            ds_txns.append(replacement_tx_json)
 
         self.log("Finished preparing double spend transactions")
         return ds_txns
 
     def ds_mine(self):
         if self.mode != Miner.DS_MUTATE:
+            self.log("Current Miner mode is not DS_MUTATE, it is {}".format(self.mode))
             raise Exception("Normal Miner cannot double spend")
 
         # if hidden chain is longer than public chain, no longer need to mine, just publish
@@ -360,15 +383,18 @@ class Miner(Node):
                 raise Exception("abnormal transactions!")
 
             new_block, prev_block = self.create_new_block(tx_collection)
+
             proof = self.proof_of_work(new_block, self.stop_mine)
             if proof is None:
                 return None
 
             self.blockchain.add_block(new_block, proof, self.get_last_node().block)
-            self.hidden_blocks += 1
+            self.hidden_blocks.append(new_block)
+            self.hidden_blocks_num += 1
 
             for tx in tx_collection:
-                self.unconfirmed_transactions.remove(tx)
+                if tx in self.unconfirmed_transactions:
+                    self.unconfirmed_transactions.remove(tx)
                 
             self.log(" Mined a new block +$$$$$$$$")
             print("""
@@ -387,7 +413,7 @@ class Miner(Node):
         self.log("Starting DS chain braodcast")
         blocks = miner.blockchain.get_blks()
 
-        for i in range(-self.hidden_blocks + 1, 0, 1):
+        for i in range(-self.hidden_blocks_num + 1, 0, 1):
             self.broadcast_blk(blocks[i], blocks[i].hash)
             time.sleep(1)
         
@@ -395,8 +421,8 @@ class Miner(Node):
 
     def end_ds_attack(self):
         self.log("Ended DS attack")
-        self.hidden_blocks = 0
-        self.fork_block = None
+        self.hidden_blocks_num = 0
+        self.fork_node = None
         self.mode = Miner.NORMAL
 
 if __name__ == '__main__':
@@ -419,10 +445,6 @@ if __name__ == '__main__':
             # peer = random.choice(miner.find_peer_by_type("SPVClient"))
             # peer_pubkey = peer["pubkey"]
             # miner.make_transaction(peer_pubkey, 1)
-
-
-
-
 
 
 

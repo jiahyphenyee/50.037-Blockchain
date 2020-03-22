@@ -48,9 +48,8 @@ class MinerListener(Listener):
                 success_add = self.node.blockchain.add(blk, proof)
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
-                        self.node.log()
                         self.node.unconfirmed_transactions.remove(tx)
-                self.node.log(f"Added a new block received: {success_add} {proof}")
+                self.node.log(f"Added a new block received: {success_add} with {len(transactions)} transactions")
                 self.node.blockchain.print()
 
             else:
@@ -174,13 +173,11 @@ class Miner(Node):
         time.sleep(1)
         tx_collection = self.get_tx_pool()
 
-        self.log(f"collected Transaction = {len(tx_collection)}")
         if not self.check_final_balance(tx_collection):
             raise Exception("abnormal transactions!")
             return None
 
         new_block, prev_block = self.create_new_block(tx_collection)
-
         proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
             return None
@@ -188,6 +185,7 @@ class Miner(Node):
         self.blockchain.add(new_block, proof)
         for tx in tx_collection:
             self.unconfirmed_transactions.remove(tx)
+
         self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
         print("""
@@ -200,7 +198,8 @@ class Miner(Node):
         return new_block, prev_block
 
     def get_tx_pool(self):
-        return self.unconfirmed_transactions
+        pool = copy.deepcopy(self.unconfirmed_transactions)
+        return pool
 
     def get_last_node(self):
         return self.blockchain.last_node
@@ -212,6 +211,7 @@ class Miner(Node):
                         timestamp=time.time(),
                         previous_hash=last_node.block.hash,
                         miner=self.pubkey)
+
         return new_block, last_node.block
 
     def broadcast_blk(self, new_blk, proof):
@@ -232,7 +232,7 @@ class Miner(Node):
 
         while not computed_hash < TARGET:
             if self.stop_mine.is_set():
-                self.log("Stop Mining as others have found the block")
+                # self.log("Stop Mining as others have found the block")
                 return None
             random.seed(time.time())
             block.nonce = random.randint(0, 100000000)

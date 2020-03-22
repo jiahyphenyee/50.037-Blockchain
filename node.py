@@ -24,6 +24,7 @@ class Node:
         self.log_prefix = f"{self.type} at {self.address}: "
         self.log("Join the network")
 
+
     @property
     def pubkey(self):
         return self._keypair[1]

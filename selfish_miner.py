@@ -23,7 +23,7 @@ Design and implement a Miner class realizing miner's functionalities. Then, impl
 """
 
 
-class MinerListener(Listener):
+class SelfishMinerListener(Listener):
     """Miner's Listener class"""
 
     def handle_by_msg_type(self, data, tcp_client):
@@ -96,12 +96,12 @@ class MinerListener(Listener):
         tcp_client.close()
 
 
-class Miner(Node):
+class SelfishMiner(Node):
     NORMAL = 0  # normal miner
     DS_MUTATE = 1  # starts to plant private chain for double spending
     DS_ATTACK = 2  # publish the withheld blocks to effect double spending
 
-    def __init__(self, privkey, pubkey, address, listener=MinerListener):
+    def __init__(self, privkey, pubkey, address, listener=SelfishMinerListener):
         print(f"address: {address}")
         super().__init__(privkey, pubkey, address, listener)
         self.unconfirmed_transactions = []  # data yet to get into blockchain
@@ -111,7 +111,7 @@ class Miner(Node):
         self.stop_mine = threading.Event()  # a indicator for whether to continue mining
 
         # attack
-        self.mode = Miner.NORMAL
+        self.mode = SelfishMiner.NORMAL
         self.hidden_blocks = 0
         self.fork_block = None
 
@@ -218,7 +218,7 @@ class Miner(Node):
         return new_block, prev_block
 
     def get_tx_pool(self):
-        if self.mode == Miner.DS_ATTACK:
+        if self.mode == SelfishMiner.DS_ATTACK:
             all_unconfirmed = copy.deepcopy(self.unconfirmed_transactions)
 
             if len(self.my_unconfirmed_txn) != len(self.ds_txns):
@@ -308,7 +308,7 @@ class Miner(Node):
 
     def setup_ds_attack(self):
         """Change miner mode and take note of fork location"""
-        self.mode = Miner.DS_MUTATE
+        self.mode = SelfishMiner.DS_MUTATE
         self.fork_block = self.get_last_node().block
         self.ds_txns = self.create_ds_txn()
         self.log("Ready for DS attack")
@@ -317,7 +317,7 @@ class Miner(Node):
         """replace DS miner's own unconfirmed transactions with new senders"""
         ds_txns = list()
 
-        if self.mode != Miner.DS_MUTATE:
+        if self.mode != SelfishMiner.DS_MUTATE:
             raise Exception("Honest miners cannot create double spend transactions")
 
         for tx_json in self.my_unconfirmed_txn:
@@ -337,7 +337,7 @@ class Miner(Node):
         return ds_txns
 
     def ds_mine(self):
-        if self.mode != Miner.DS_MUTATE:
+        if self.mode != SelfishMiner.DS_MUTATE:
             raise Exception("Normal Miner cannot double spend")
 
         # if hidden chain is longer than public chain, no longer need to mine, just publish
@@ -345,7 +345,7 @@ class Miner(Node):
             self.ds_broadcast()
             return
         else:
-            self.mode = Miner.DS_ATTACK
+            self.mode = SelfishMiner.DS_ATTACK
             self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
 
             tx_collection = self.get_tx_pool()
@@ -375,7 +375,7 @@ class Miner(Node):
             return new_block, prev_block
 
     def ds_broadcast(self):
-        if self.mode != Miner.DS_ATTACK:
+        if self.mode != SelfishMiner.DS_ATTACK:
             raise Exception("Miner is not in attacking mode")
 
         self.log("Starting DS chain braodcast")
@@ -391,11 +391,11 @@ class Miner(Node):
         self.log("Ended DS attack")
         self.hidden_blocks = 0
         self.fork_block = None
-        self.mode = Miner.NORMAL
+        self.mode = SelfishMiner.NORMAL
 
 
 if __name__ == '__main__':
-    miner = Miner.new(("localhost", int(sys.argv[1])))
+    miner = SelfishMiner.new(("localhost", int(sys.argv[1])))
     time.sleep(5)
     while True:
         time.sleep(2)

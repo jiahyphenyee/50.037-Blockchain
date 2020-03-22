@@ -6,6 +6,7 @@ import subprocess
 
 import wx
 from miner import Miner
+from SPVClient import SPVClient
 
 
 APP_EXIT = 1
@@ -18,7 +19,9 @@ JOIN_NETWORK = 31
 START_MINE = 32
 MAKE_TXN = 33
 VALIDATE_TXN = 34
-
+GET_HEADER = 35
+UPDATE_BAL = 36
+VERIFY_TXN = 37
 
 class MyFrame(wx.Frame):
 
@@ -27,29 +30,44 @@ class MyFrame(wx.Frame):
         self.InitUI()
 
     def InitUI(self):
-        panel=MinerPanel(self)
+        panel=PlayerPanel(self, sys.argv[2])
         self.SetSize((1300, 250))
         self.SetTitle(panel.title)
         self.Center()
         self.Show(True)
 
 
-class MinerPanel(wx.Panel):
-    def __init__(self, parent):
+class PlayerPanel(wx.Panel):
+    def __init__(self, parent, type):
         wx.Panel.__init__(self, parent)
-        self.title=f"Miner at port {sys.argv[1]}"
-        self.miner = None
+        print(type)
+
+        self.type = type
+        self.node = None
+        self.title = None
 
         self.btn_join = wx.Button(self, label='Join Network', pos=(50, 20))
         self.btn_join.id = JOIN_NETWORK
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_join)
 
-        self.balance_label = wx.StaticText(self, label='Balance:  ', pos=(200, 20))
+
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
 
-        self.btn_mine = wx.Button(self, label='Start Mining', pos=(50, 60))
-        self.btn_mine.id = START_MINE
-        self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
+        if type == "m":
+            self.balance_label = wx.StaticText(self, label='Balance:  ', pos=(200, 20))
+            self.btn_mine = wx.Button(self, label='Start Mining', pos=(50, 60))
+            self.btn_mine.id = START_MINE
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
+            self.title = f"Miner at port {sys.argv[1]}"
+        if type == "s":
+            self.btn_balance = wx.Button(self, label='Balance Update  ', pos=(200, 20))
+            self.btn_balance.id = UPDATE_BAL
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
+
+            self.btn_hd = wx.Button(self, label='Get Headers', pos=(50, 60))
+            self.btn_hd.id = GET_HEADER
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_hd)
+            self.title = f"Spv at port {sys.argv[1]}"
 
         self.to_label = wx.StaticText(self, label='Recipient ', pos=(50, 100))
         self.to_field = wx.TextCtrl(self, pos=(120, 100), size=(100, 30))
@@ -78,18 +96,28 @@ class MinerPanel(wx.Panel):
     def OnBtnClick(self, event):
         identifier = event.GetEventObject().id
         if identifier == JOIN_NETWORK:
-            self.miner = Miner.new(("localhost", int(sys.argv[1])))
+            if self.type == "m":
+                self.node = Miner.new(("localhost", int(sys.argv[1])))
+            elif self.type == "s":
+                self.node = SPVClient.new(("localhost", int(sys.argv[1])))
         elif identifier == START_MINE:
-            self.miner.mine()
-            self.balance_value.SetLabel(str(self.miner.get_own_balance())+"  ")
+            self.node.mine()
+            self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
+        elif identifier == GET_HEADER:
+            self.node.get_blk_headers()
+        elif identifier == UPDATE_BAL:
+            self.node.request_balance()
+        elif identifier == VERIFY_TXN:
+            pass
+            # self.node.verify_user_transaction(tx=)
         elif identifier == MAKE_TXN:
             receiver_port = self.to_field.GetValue()
-            receiver_node = self.miner.find_peer_by_addr(("localhost", int(receiver_port)))
+            receiver_node = self.node.find_peer_by_addr(("localhost", int(receiver_port)))
             print(f"receiver node = {receiver_node}")
             receiver_pubkey = receiver_node["pubkey"]
             print(f"found receiver pubkey = {receiver_pubkey}")
 
-            self.miner.make_transaction(receiver=receiver_pubkey, amount=int(self.amt_field.GetValue()))
+            self.node.make_transaction(receiver=receiver_pubkey, amount=float(self.amt_field.GetValue()))
 
 
 class RedirectText(object):
@@ -98,6 +126,7 @@ class RedirectText(object):
 
     def write(self, string):
         wx.CallAfter(self.out.WriteText, string)
+
 
 def main():
     app = wx.App()

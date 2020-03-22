@@ -55,7 +55,8 @@ class SPVClient(Node):
         """ Get headers for all blocks"""
         blk_headers = {}
         req = "x"
-        reply = self.broadcast_request(req)
+        replies = self.broadcast_request(req)
+        reply = SPVClient._process_replies(replies)
         headers = json.loads(reply)["headers"]
         for blk_hash, header in headers.values():
             blk_headers[blk_hash] = header
@@ -75,6 +76,14 @@ class SPVClient(Node):
             msg = "t" + json.dumps({"tx_json": tx_json})
             self.broadcast_message(msg)
             return tx
+        else:
+            self.log("Not enough balance in your account!")
+
+    def request_balance(self):
+        """Request balance from network"""
+        req = "m" + json.dumps({"identifier": stringify_key(self.pubkey)})
+        replies = self.broadcast_request(req)
+        return int(SPVClient._process_replies(replies))
 
     def verify_user_transaction(self, tx):
         """Verify that transaction is in blockchain"""

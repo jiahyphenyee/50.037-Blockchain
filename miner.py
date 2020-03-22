@@ -53,7 +53,7 @@ class MinerListener(Listener):
                 self.node.blockchain.print()
 
             else:
-                self.node.log("Invalid transactions in the new block received!")
+                self.node.log("Invalid transactions in the new block received! ")
             self.node.stop_mine.clear()
 
         elif msg_type == "t":  # new transaction
@@ -78,10 +78,17 @@ class MinerListener(Listener):
 
         elif msg_type == "x":  # request for headers by spvclient
             self.node.log("======= Receive request for headers (SPV)")
+            headers = self.node.get_blk_headers()
             msg = json.dumps({
-                "headers": self.node.get_blk_header()
+                "headers": headers
             })
-            tcp_client.sendall(msg.encode)
+            tcp_client.sendall(msg.encode())
+
+        elif msg_type == "m":  # request for balance by spvclient
+            self.node.log("======= Receive request for balance (SPV)")
+            identifier = json.loads(data[1:])["identifier"]
+            msg = json.dumps(self.node.get_balance(identifier))
+            tcp_client.sendall(msg.encode())
 
         tcp_client.close()
 
@@ -154,6 +161,8 @@ class Miner(Node):
             msg = "t" + json.dumps({"tx_json": tx_json})
             self.broadcast_message(msg)
             return tx
+        else:
+            self.log("Not enough balance in your account!")
 
     def add_transaction(self, tx):
         """Add transaction to the pool of unconfirmed transactions"""

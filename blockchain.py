@@ -173,32 +173,36 @@ class Blockchain:
 
     def get_nonce(self, public_key):
         ## stringified public key
-        return self.public_keys_nonce[public_key]
+        if public_key not in self.public_keys_nonce.keys():
+            return 0
+        else:
+            return self.public_keys_nonce[public_key]
 
 
     def get_balance(self):
         blocks = self.get_blks()
+        balance = {}
         for block in blocks:
             if block == self.root:
                 continue
             miner_string = stringify_key(block.miner)
-            if miner_string not in self.balance.keys():
-                self.balance[miner_string] = 100
+            if miner_string not in balance.keys():
+                balance[miner_string] = 100
             else:
-                self.balance[miner_string] += 100
+                balance[miner_string] += 100
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
                 sender_string = stringify_key(tx.sender)
                 if sender_string not in self.balance.keys():
-                    self.balance[sender_string] = -tx.amount
+                    balance[sender_string] = -tx.amount
                 else:
-                    self.balance[sender_string] -= tx.amount
+                    balance[sender_string] -= tx.amount
                 receiver_string = stringify_key(tx.receiver)
                 if receiver_string not in self.balance.keys():
-                    self.balance[receiver_string] = tx.amount
+                    balance[receiver_string] = tx.amount
                 else:
-                    self.balance[receiver_string] += tx.amount
-        return self.balance
+                    balance[receiver_string] += tx.amount
+        return balance
 
     def print(self):
         Blockchain.lock.acquire()
@@ -227,12 +231,12 @@ if __name__ == "__main__":
     for j in range(2):
         transactions = list()
         # for i in range(random.randint(10,11)):
-        for i in range(3):
+        for i in range(1):
             sk = SigningKey.generate()
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
             vk1 = sk1.get_verifying_key()
-            t = Transaction.new(alice_public, bob_public, 4, 'r',alice_private,0)
+            t = Transaction.new(alice_public, bob_public, 4, 'r',alice_private,blockchain.get_nonce(stringify_key(alice_public))+1)
             s = t.serialize()
             transactions.append(s)
 
@@ -256,8 +260,10 @@ if __name__ == "__main__":
     # print(balance_addr[stringify_key(miner_public)])
     # print(balance_addr[stringify_key(alice_public)])
     # print(balance_addr[stringify_key(bob_public)])
-    # proofs, block = blockchain.get_proof(transactions[0])
-    # print(verify_proof(transactions[0],proofs,block.merkle.get_root()))
+    print(s in blockchain.last_node.block.transactions)
+    print(blockchain.last_node.block.transactions)
+    proofs, block = blockchain.get_proof(s)
+    print(verify_proof(s, proofs, block.merkle.get_root()))
     # block = blockchain.last_node.block
     # print(block.previous_hash)
     # s = block.serialize()

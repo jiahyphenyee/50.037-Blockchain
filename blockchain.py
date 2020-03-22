@@ -28,6 +28,8 @@ class Blockchain:
         self.last_nodes = []
         self.last_nodes.append(self.root_node)
         self.nodes = [self.root_node]
+        self.balance = {}
+        self.public_keys_nonce = {}
 
     def create_genesis_block(self):
         """
@@ -104,6 +106,14 @@ class Blockchain:
         if previous_block is None:
             self.last_nodes.remove(parent_node)
         self.last_nodes.append(current_node)
+
+        for transaction in block.transactions:
+            tx = Transaction.deserialize(transaction)
+            sender_string = stringify_key(tx.sender)
+            if sender_string not in self.public_keys_nonce.keys():
+                self.public_keys_nonce[sender_string] = 0
+            else:
+                self.public_keys_nonce[sender_string] += 1
         return True
 
     def is_valid_proof(self, block, block_hash):
@@ -160,30 +170,35 @@ class Blockchain:
             last_node = last_node.previous
         proofs = last_node.block.merkle.get_proof(transaction)
         return proofs, last_node.block
+
+    def get_nonce(self, public_key):
+        ## stringified public key
+        return self.public_keys_nonce[public_key]
+
+
     def get_balance(self):
         blocks = self.get_blks()
-        dic = {}
         for block in blocks:
             if block == self.root:
                 continue
             miner_string = stringify_key(block.miner)
-            if miner_string not in dic.keys():
-                dic[miner_string] = 100
+            if miner_string not in self.balance.keys():
+                self.balance[miner_string] = 100
             else:
-                dic[miner_string] += 100
+                self.balance[miner_string] += 100
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
                 sender_string = stringify_key(tx.sender)
-                if sender_string not in dic.keys():
-                    dic[sender_string] = -tx.amount
+                if sender_string not in self.balance.keys():
+                    self.balance[sender_string] = -tx.amount
                 else:
-                    dic[sender_string] -= tx.amount
+                    self.balance[sender_string] -= tx.amount
                 receiver_string = stringify_key(tx.receiver)
-                if receiver_string not in dic.keys():
-                    dic[receiver_string] = tx.amount
+                if receiver_string not in self.balance.keys():
+                    self.balance[receiver_string] = tx.amount
                 else:
-                    dic[receiver_string] += tx.amount
-        return dic
+                    self.balance[receiver_string] += tx.amount
+        return self.balance
 
     def print(self):
         Blockchain.lock.acquire()
@@ -217,7 +232,7 @@ if __name__ == "__main__":
             vk = sk.get_verifying_key()
             sk1 = SigningKey.generate()
             vk1 = sk1.get_verifying_key()
-            t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private)
+            t = Transaction.new(alice_public, bob_public, 4, 'r',alice_private,0)
             s = t.serialize()
             transactions.append(s)
 
@@ -232,6 +247,8 @@ if __name__ == "__main__":
     for node in blockchain.last_nodes:
         print(node.block, node.block.blk_height)
     print(blockchain.get_blks())
+    print(blockchain.get_blks())
+    print(blockchain.public_keys_nonce)
     blockchain.print()
     # print(stringify_key(miner_public))
     # balance_addr = blockchain.get_balance()

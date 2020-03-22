@@ -104,7 +104,7 @@ class Miner(Node):
         super().__init__(privkey, pubkey, address, listener)
         self.unconfirmed_transactions = []  # data yet to get into blockchain
         self.blockchain = Blockchain()
-        self.my_transactions = list()   # all transactions sent by me
+        self.my_unconfirmed_txn = list()   # all unconfirmed transactions sent by me
 
 
         #locks
@@ -115,7 +115,6 @@ class Miner(Node):
 
         #attack
         self.mode = Miner.NORMAL
-        self.hidden_chain = None
         self.hidden_blocks = 0
         self.fork_block = None
 
@@ -165,10 +164,11 @@ class Miner(Node):
                                  receiver=obtain_key_from_string(receiver),
                                  amount=amount,
                                  comment="",
-                                 key=self._keypair[0])
+                                 key=self._keypair[0],
+                                 nonce=self.blockchain.get_nonce(stringify_key(self.pubkey)))
             tx_json = tx.serialize()
             self.log(" Made a new transaction")
-            self.my_transactions.append(tx)
+            self.my_unconfirmed_txn.append(tx_json)
             self.add_transaction(tx)
             msg = "t" + json.dumps({"tx_json": tx_json})
             self.broadcast_message(msg)
@@ -177,7 +177,7 @@ class Miner(Node):
             self.log("Not enough balance in your account!")
 
     def add_transaction(self, tx):
-        """Add transaction to the pool of unconfirmed transactions"""
+        """Add transaction to the pool of unconfirmed transactions and miner's own transaction list"""
         if not tx.validate():
             raise Exception("New transaction failed signature verification.")
         tx_json = tx.serialize()
@@ -206,6 +206,7 @@ class Miner(Node):
         self.blockchain.add(new_block, proof)
         for tx in tx_collection:
             self.unconfirmed_transactions.remove(tx)
+            self.my_unconfirmed_txn.remove(tx)
 
         self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
@@ -221,18 +222,17 @@ class Miner(Node):
     def get_tx_pool(self):
         if self.mode == Miner.DS_ATTACK:
             all_unconfirmed = copy.deepcopy(self.unconfirmed_transactions)
-            pool = list(set(all_unconfirmed) - set(self.my_transactions))
+
+            if len(self.my_unconfirmed_txn) != len(self.ds_txns):
+                raise Exception("Double spend transactions wrongly replaced")
+
+            pool = list(set(all_unconfirmed) - set(self.my_unconfirmed_txn)).append(self.ds_txns) 
         else:
             pool = copy.deepcopy(self.unconfirmed_transactions)
 
         return pool
 
     def get_last_node(self):
-        if self.mode == Miner.DS_ATTACK or self.mode == Miner.DS_MUTATE:
-            if self.hidden_chain == None:
-                raise Exception("No hidden chain initialised for DS Attack")
-            return self.hidden_chain.last_node
-        else:
             return self.blockchain.last_node
 
     def create_new_block(self, tx_collection):
@@ -305,13 +305,37 @@ class Miner(Node):
         if chain == "public":
             return self.blockchain.last_node.block.blk_height
         else:
-            return self.hidden_chain.last_node.block.blk_height
+            return self.fork_block.blk_height + len(self.hidden_blocks)
             
     def setup_ds_attack(self):
+        """Change miner mode and take note of fork location"""
         self.mode = Miner.DS_MUTATE
-        self.hidden_chain = copy.deepcopy(miner.blockchain)
         self.fork_block = self.get_last_node().block
-        self.log("Private Chain created, ready for DS attack")
+        self.ds_txns = self.create_ds_txn()
+        self.log("Ready for DS attack")
+        
+    def create_ds_txn(self):
+        """replace DS miner's own unconfirmed transactions with new senders""" 
+        ds_txns = list()
+
+        if self.mode != Miner.DS_MUTATE:
+            raise Exception("Honest miners cannot create double spend transactions")
+
+        for tx_json in self.my_unconfirmed_txn:
+            tx = Transaction.deserialize(tx_json)
+
+            if tx.sender != self._keypair[1]:
+                raise Exception("Sender is double spending on the wrong transaction")
+
+            replacement_tx = Transaction.new(sender=self._keypair[1],
+                                 receiver=self._keypair[1],
+                                 amount=tx.amount,
+                                 comment=tx.comment,
+                                 key=self._keypair[0],
+                                 nonce=tx.nonce)
+            
+            ds_txns.append(replacement_tx)
+        return ds_txns
 
     def ds_mine(self):
         if self.mode != Miner.DS_MUTATE:
@@ -334,11 +358,12 @@ class Miner(Node):
             if proof is None:
                 return None
 
-            self.hidden_chain.add_block(new_block, proof, self.get_last_node().block)
+            self.blockchain.add_block(new_block, proof, self.get_last_node().block)
             self.hidden_blocks += 1
 
             for tx in tx_collection:
                 self.unconfirmed_transactions.remove(tx)
+                self.my_unconfirmed_txn.remove(tx)
                 
             self.log(" Mined a new block +$$$$$$$$")
             print("""
@@ -355,7 +380,7 @@ class Miner(Node):
             raise Exception("Miner is not in attacking mode")
 
         self.log("Starting DS chain braodcast")
-        blocks = miner.hidden_chain.get_blks()
+        blocks = miner.blockchain.get_blks()
 
         for i in range(-self.hidden_blocks + 1, 0, 1):
             self.broadcast_blk(blocks[i], blocks[i].hash)
@@ -365,13 +390,9 @@ class Miner(Node):
 
     def end_ds_attack(self):
         self.log("Ended DS attack")
-        self.hidden_chain = None
         self.hidden_blocks = 0
         self.fork_block = None
         self.mode = Miner.NORMAL
-
-
-
 
 if __name__ == '__main__':
     miner = Miner.new(("localhost", int(sys.argv[1])))

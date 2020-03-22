@@ -23,24 +23,20 @@ class DSMiner(Miner):
         self.mode = DSMiner.NORMAL
         self.unwanted_tx = list() # a set of transactions that the DSClient wanna invalidate
         self.fork_block = None
-        self.hidden_chain = None
-        self.hidden_blocks = 0
+        self.hidden_blocks = list()
         #self.withheld_blocks = [] # these blocks will not be published until attack fired
 
     """DS Miner functions"""
     def setup_ds_attack(self):
-        self.hidden_chain = copy.deepcopy(miner.blockchain)
         self.fork_block = self.get_last_node().block
         self.log("Private Chain created, ready for DS attack")
 
-
-    
     def get_longest_len(self, chain):
         """Get length of longest chain"""
         if chain == "public":
             return self.blockchain.last_node.block.blk_height
         else:
-            return self.hidden_chain.last_node.block.blk_height
+            return self.blockchain.fork_block.blk_height + len(self.hidden_blocks)
 
     """ Override mining functions """
     def get_tx_pool(self):

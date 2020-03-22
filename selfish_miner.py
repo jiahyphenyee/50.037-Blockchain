@@ -44,6 +44,7 @@ class SelfishMinerListener(Listener):
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
             if self.node.check_final_balance(transactions):
+                delta_previous = self.node.self.node.blockchain.length
                 success_add = self.node.blockchain.add(blk, proof)
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
@@ -190,7 +191,7 @@ class SelfishMiner(Node):
         if self.peers is None and self.stop_mine.is_set():
             return None
 
-        self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
+        self.log(f"mining on block height of {self.private_blockchain.last_node.block.blk_height} ....\n....\n")
         time.sleep(1)
         tx_collection = self.get_tx_pool()
 
@@ -201,14 +202,17 @@ class SelfishMiner(Node):
         new_block, prev_block = self.create_new_block(tx_collection)
         proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
+            delta_previous = self.private_blockchain.last_node.block.blk_height - self.blockchain.last_node.block.blk_height
+            if delta_previous == 0:
+
             return None
 
-        self.blockchain.add(new_block, proof)
+        self.private_blockchain.add(new_block, proof)
         for tx in tx_collection:
             self.unconfirmed_transactions.remove(tx)
             self.my_unconfirmed_txn.remove(tx)
 
-        self.broadcast_blk(new_block, proof)
+        # self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
         print("""
                     |---------|

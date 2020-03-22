@@ -10,6 +10,8 @@ class MerkleNode():
         self.leftChild = leftChild
         self.rightChild = rightChild
 
+    # def serialise(self):
+
 
 class MerkleTree():
     def __init__(self, transactions = list()):
@@ -82,8 +84,11 @@ class MerkleTree():
             else:
                 proofs.append(newParent.leftChild)
             parent = newParent
-
-        return proofs
+        hashed_proof = []
+        for proof in proofs:
+            isLeft = True if proof.isLeft else False
+            hashed_proof.append([isLeft, proof.hash])
+        return hashed_proof
 
     def get_root(self):
         # Return the current root
@@ -103,12 +108,12 @@ def verify_proof(entry, proofs, root):
     if len(proofs) == 0:
         return entry == root
     for proof in proofs:
-        if proof.isLeft:
-            hash = MerkleTree.compute_hash(proof.hash + entry)
+        if proof[0]:
+            hash = MerkleTree.compute_hash(proof[1] + entry)
         else:
-            hash = MerkleTree.compute_hash(entry + proof.hash)
-        if hash != proof.parent.hash:
-            return False
+            hash = MerkleTree.compute_hash(entry + proof[1])
+        # if hash != proof.parent.hash:
+        #     return False
         entry = hash
     if entry != root:
         return False

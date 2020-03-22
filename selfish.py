@@ -1,6 +1,7 @@
 import copy
 import time
 import sys
+import json
 from block import Block
 from transaction import Transaction
 from miner import Miner, MinerListener
@@ -8,6 +9,14 @@ from blockchain import Blockchain
 
 class SelfishMinerListener(MinerListener):
     # TODO implement message handling
+    def handle_by_msg_type(self, data, tcp_client):
+        """Handle client data based on msg_type"""
+        msg_type = data[0].lower()
+
+        if msg_type == "n":  # updates on network nodes
+            self.node.log("======= Receive updates on network nodes")
+            nodes = json.loads(data[1:])["nodes"]
+            self.node.set_peers(nodes)
 
 class SelfishMiner(Miner):
     """Selfish Miner class"""

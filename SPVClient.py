@@ -42,7 +42,7 @@ class SPVClient(Node):
         super().__init__(privkey, pubkey, address, listener)
         self.blk_headers_by_hash = {}
         self.balance = 0
-        self.interested_txn=[]
+        self.interested_txn = []
 
     @classmethod
     def new(cls, address):
@@ -74,7 +74,6 @@ class SPVClient(Node):
             self.blk_headers_by_hash[blk_hash] = header
         self.log(f"current headers: {self.blk_headers_by_hash}")
 
-
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
         if self.balance >= amount:
@@ -86,6 +85,7 @@ class SPVClient(Node):
             tx_json = tx.serialize()
             print(f"{self.type} at {self.address} made a new transaction")
             msg = "t" + json.dumps({"tx_json": tx_json})
+            self.interested_txn.append(tx_json)
             self.broadcast_message(msg)
 
             return tx
@@ -102,9 +102,9 @@ class SPVClient(Node):
         self.log(f"Get Balance = {reply}")
         return reply
 
-    def verify_user_transaction(self, tx):
+    def verify_user_transaction(self, tx_json):
         """Verify that transaction is in blockchain"""
-        tx_json = tx.serialize()
+        self.log(f"Requesting Proof from full blockchain node")
         req = "r" + json.dumps({"tx_json": tx_json})
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
@@ -113,14 +113,16 @@ class SPVClient(Node):
         last_blk_hash = valid_reply["last_blk_hash"]
         # Transaction not in blockchain
         if proof is None:
+            self.log(f"No Proof Found!")
             return False
 
         if (blk_hash not in self.blk_headers_by_hash
                 or last_blk_hash not in self.blk_headers_by_hash):
             return False
         blk_header = self.blk_headers_by_hash[blk_hash]
-        if not verify_proof(tx, proof, blk_header["root"]):
+        if not verify_proof(Transaction.deserialize(tx_json), proof, blk_header["root"]):
             # Potential eclipse attack
+            self.log("Transaction proof verification failed.")
             raise Exception("Transaction proof verification failed.")
 
         return True

@@ -19,7 +19,7 @@ class Block:
         self.miner = miner
         self.merkle = MerkleTree(transactions) if len(transactions) != 0 else None
         self.transactions = transactions
-        if self.merkle.__eq__(None):
+        if self.merkle is None:
             self.root = None
         else:
             self.root = self.merkle.get_root().hash

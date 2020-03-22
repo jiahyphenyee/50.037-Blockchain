@@ -269,6 +269,10 @@ if __name__ == "__main__":
     # s = t.serialize()
     proofs, block = blockchain.get_proof(s)
     print(verify_proof(s, proofs, block.merkle.get_root().hash))
+    print(verify_proof(s, proofs, block.root))
+    print(block.root)
+    print(block.merkle.get_root().hash)
+    print(block.root == block.merkle.get_root().hash)
     # block = blockchain.last_node.block
     # print(block.previous_hash)
     # s = block.serialize()

@@ -106,7 +106,8 @@ class PlayerPanel(wx.Panel):
         elif identifier == GET_HEADER:
             self.node.get_blk_headers()
         elif identifier == UPDATE_BAL:
-            self.node.request_balance()
+            balance = self.node.request_balance()
+            self.balance_value.SetLabel(str(balance) + "  ")
         elif identifier == VERIFY_TXN:
             pass
             # self.node.verify_user_transaction(tx=)

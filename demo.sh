@@ -91,7 +91,7 @@ else
       python3 demo.py $((12346)) "m" &
       sleep 1
       IDS+=($!)
-      python3 demo.py $((12347)) "m" &
+      python3 demo.py $((12347)) "s" &
       sleep 1
       IDS+=($!)
   fi

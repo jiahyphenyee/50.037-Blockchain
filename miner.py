@@ -33,7 +33,6 @@ class MinerListener(Listener):
             self.node.log("======= Receive updates on network nodes")
             nodes = json.loads(data[1:])["nodes"]
             self.node.set_peers(nodes)
-            self.node.log(f"Peers: {self.node.peers}")
 
         elif msg_type == "b":  # new block
             self.node.log("======= Receive new block from peer")
@@ -83,12 +82,14 @@ class MinerListener(Listener):
                 "headers": headers
             })
             tcp_client.sendall(msg.encode())
+            self.node.log(">>> send headers to SPV")
 
         elif msg_type == "m":  # request for balance by spvclient
             self.node.log("======= Receive request for balance (SPV)")
             identifier = json.loads(data[1:])["identifier"]
             msg = json.dumps(self.node.get_balance(identifier))
             tcp_client.sendall(msg.encode())
+            self.node.log(f">>> send balance = {msg} to SPV")
 
         tcp_client.close()
 

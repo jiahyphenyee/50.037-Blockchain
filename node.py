@@ -43,6 +43,7 @@ class Node:
             if tuple(peer["address"]) != self.address:
                 my_peers.append(peer)
         self.peers = my_peers
+        self.log(f"Peers: {self.peers}")
 
     def register_node(self):
         msg = "n" + json.dumps({

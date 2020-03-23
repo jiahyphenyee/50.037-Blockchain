@@ -477,11 +477,12 @@ class SelfishMinerListener(Listener):
 
                     blks = self.node.private_blockchain.get_blks()
                     for i in range(self.node.privateBranchLen - 1, -1, -1):
-                        self.node.broadcast_blk(blks[i], blk[i].compute_hash())
-                        self.node.blockchain.add(blks[i], blk[i].compute_hash())
+                        self.node.broadcast_blk(blks[i], blks[i].compute_hash())
+                        self.node.blockchain.add(blks[i], blks[i].compute_hash())
+                    self.privateBranchLen = 0
                 else:
                     last_node = self.node.private_blockchain.last_node
-                    for i in range(self.node.privateBranchLen):
+                    for i in range(self.node.privateBranchLen - 1):
                         last_node = last_node.previous
                     self.node.broadcast_blk(last_node.block, last_node.block.compute_hash())
                     self.node.blockchain.add(last_node.block, last_node.block.compute_hash())

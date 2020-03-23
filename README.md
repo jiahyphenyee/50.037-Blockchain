@@ -18,13 +18,13 @@
 
 #### 1. Miner Competition and Coin Creation
 To simulate miner competition, we can run `./demo.sh -m 3` to create 3 miners.
-- For each miner, click on Join Network button, this will register the miner at the Address server. They will also be receiving updates on network nodes that are listening and record the peers. You will see following message in their respective loggers.
+- For each miner, click on `Join Network` button, this will register the miner at the Address server. They will also be receiving updates on network nodes that are listening and record the peers. You will see following message in their respective loggers.
 ```
 Miner at ('localhost', 12348):  Join the network
 Miner at ('localhost', 12348):  ======= Receive updates on network nodes
 Miner at ('localhost', 12348):  Peers: []
 ```
-- For each miner, clink on Start Mining button, this will set the miners mining for proof. Once a block is mined, you should see the following line somewhere in the logger of that miner that show you the proof and time spent on mining:
+- For each miner, clink on `Start Mining` button, this will set the miners mining for proof. Once a block is mined, you should see the following line somewhere in the logger of that miner that show you the proof and time spent on mining:
 ```
 Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a7720604c5762b91587890d5a78aeb1 < TARGET in 4.400625944137573 seconds
 ```
@@ -34,9 +34,9 @@ Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a
    `- hash: 00000522aaafc965668e4c0e5ae034c87a7720604c5762b91587890d5a78aeb1, number of transactions: 0
 ```
 
-- Under the Update Balance button, the balance should be updated for the miner who successfully mined the block. If not, please press the Update Balance button to update.
+- Under the `Update Balance` button, the balance should be updated for the miner who successfully mined the block. If not, please press the `Update Balance` button to update.
 - Sometimes Forking may happen if miners mine the block at the same time.
-- For demostration purpose, mining event is only triggered once for one click. If a new block is mined or mining process stopped midway as others found a block, we need to manually press Start Mine button again to continue mining for another block
+- For demostration purpose, mining event is only triggered once for one click. If a new block is mined or mining process stopped midway as others found a block, we need to manually press `Start Mining` button again to continue mining for another block
 
 #### 2. Fork Resolution
 
@@ -49,7 +49,7 @@ To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to c
 ```
 SPVClient at ('localhost', 22346):  Header with non-existing prev-hash. Do you want to request headers?
 ```
-- Now let us pass some money from the miner to a spv client. In the recipient field, we use the port number of the spv client for simplicity. After we fill in the amout, we press Make A Transaction to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
+- Now let us pass some money from the miner to a spv client. In the `recipient` field, we use the port number of the spv client for simplicity. After we fill in the `amount`, we press  `Make A Transaction` to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
 ```
 Miner at ('localhost', 12347):  ======= Receive new transaction from peer
 Miner at ('localhost', 12347):  most recent nonce = 0 vs new nonce = 1

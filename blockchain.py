@@ -28,7 +28,7 @@ class Blockchain:
         self.last_nodes = []
         self.last_nodes.append(self.root_node)
         self.nodes = [self.root_node]
-        self.public_keys_nonce = {}
+        # self.public_keys_nonce = {}
 
     @classmethod
     def new(cls, prev_blks):
@@ -132,14 +132,14 @@ class Blockchain:
                 self.last_nodes.remove(node)
             # self.last_nodes.remove(parent_node)
         self.last_nodes.append(current_node)
-
-        for transaction in block.transactions:
-            tx = Transaction.deserialize(transaction)
-            sender_string = stringify_key(tx.sender)
-            if sender_string not in self.public_keys_nonce.keys():
-                self.public_keys_nonce[sender_string] = 0
-            else:
-                self.public_keys_nonce[sender_string] += 1
+        #
+        # for transaction in block.transactions:
+        #     tx = Transaction.deserialize(transaction)
+        #     sender_string = stringify_key(tx.sender)
+        #     if sender_string not in self.public_keys_nonce.keys():
+        #         self.public_keys_nonce[sender_string] = 0
+        #     else:
+        #         self.public_keys_nonce[sender_string] += 1
         return True
 
     def is_valid_proof(self, block, block_hash):
@@ -174,19 +174,22 @@ class Blockchain:
         #
         # proof = self.proof_of_work(new_block)
         # if previous_block is None:
+        for node in self.nodes:
+            if new_block.compute_hash() == node.block.compute_hash():
+                return False
         added = self.add_block(new_block, proof)
         # else:
         #     added = self.add_block(new_block, proof, previous_block)
 
         return added
 
-    def get_blks(self, node = None):
+    def get_blks(self, block=None):
 
         blocks = list()
-        if node is None:
+        if block is None:
             last_node = self.last_node
         else:
-            last_node = node
+            last_node = self.get_node_from_block(block)
         while last_node.block.hash != self.root.hash:
             blocks.append(last_node.block)
             last_node = last_node.previous
@@ -204,16 +207,32 @@ class Blockchain:
         proofs = last_node.block.merkle.get_proof(transaction)
         return proofs, last_node.block
 
-    def get_nonce(self, public_key):
+    def get_nonce(self, public_key, block=None):
+        public_keys_nonce = {}
+        blocks = self.get_blks(block)
+        for block in blocks:
+            for transaction in block.transactions:
+                tx = Transaction.deserialize(transaction)
+                sender_string = stringify_key(tx.sender)
+                if sender_string not in public_keys_nonce.keys():
+                    public_keys_nonce[sender_string] = 0
+                else:
+                    public_keys_nonce[sender_string] += 1
         ## stringified public key
-        if public_key not in self.public_keys_nonce.keys():
+        if public_key not in public_keys_nonce.keys():
             return 0
         else:
-            return self.public_keys_nonce[public_key]
+            return public_keys_nonce[public_key]
 
+    def get_node_from_block(self, block):
+        for node in self.nodes:
+            if node.block.compute_hash() == block.compute_hash():
+                return node
+        return None
 
-    def get_balance(self):
-        blocks = self.get_blks()
+    def get_balance(self, block=None):
+        blocks = self.get_blks(block)
+
         balance = {}
         for block in blocks:
             if block == self.root:
@@ -304,8 +323,8 @@ if __name__ == "__main__":
     #     print(node.block, node.block.blk_height)
     newChain.print()
     blockchain.print()
-    print(newChain.get_balance())
-    print(blockchain.get_balance())
+    print(newChain.get_nonce(stringify_key(alice_public),screwedUpBlock))
+    print(blockchain.get_nonce(stringify_key(alice_public)))
     # print(verify_proof(s, proofs, block.root))
     # print(block.root)
     # print(block.merkle.get_root().hash)

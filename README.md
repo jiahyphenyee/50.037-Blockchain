@@ -64,7 +64,8 @@ Miner at ('localhost', 12347):  1 number of unconfirmed transactions
 - Now when spv client press Update Balance to request for balance, it will be updated.
 
 #### 4. Transaction Verification and Resending Protection
-- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner. If 
+- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner or press Resend to resend the transaction. To do this demo we will ask the spv clients
+- if the transaction is not confirmed when spv client request 
 
 #### 5. Double Spend Attack
 - Run `./demo.sh -m 3` to create 3 miners. One of them will be Double Spend (DS).

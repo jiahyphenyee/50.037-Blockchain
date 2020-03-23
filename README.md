@@ -39,7 +39,16 @@ Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a
 - For demostration purpose, mining event is only triggered once for one click. If a new block is mined or mining process stopped midway as others found a block, we need to manually press `Start Mining` button again to continue mining for another block
 
 #### 2. Fork Resolution
-Fork resolution is done every time a block is added to the chain. It is reflected in the account balance of the miners.
+Fork resolution is done by checking the nodes in the blockchain with no children, and then comparing which one has the longest chain. This is implemented in Blockchain under last_node property, which fetches the last block of the longest chain.
+```
+@property
+    def last_node(self):
+        """
+        A quick pythonic way to retrieve the most recent block in the chain. Note that
+        the chain will always consist of at least one block (i.e., genesis block)
+        """
+        return self.resolve()
+```
 
 #### 3. Miners and SPV Clients payments
 To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to create 2 miners and 1 spv client.

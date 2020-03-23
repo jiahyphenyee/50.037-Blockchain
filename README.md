@@ -10,8 +10,9 @@
 ### Run GUI Demo
 - After cloning/downloading this repo, open your terminal and cd to the root folder of this project
 - `demo.sh` is our file for running the demo
-- -m will Set miner number
-- -s will Set SPV client number
+- -m will set miner number
+- -s will set SPV client number
+- -f will set selfish miner number
 - e.g. run `./demo.sh -m 2 -s 1` to start 2 miners and 1 spv client
 
 
@@ -64,8 +65,20 @@ Miner at ('localhost', 12347):  1 number of unconfirmed transactions
 - Now when spv client press Update Balance to request for balance, it will be updated.
 
 #### 4. Transaction Verification and Resending Protection
-- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner or press Resend to resend the transaction. To do this demo we will ask the spv clients
-- if the transaction is not confirmed when spv client request 
+- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner or press Resend to resend the transaction. To do this demo we will ask the spv clients to make a few transactions to the miners.
+- If we verify a transaction that is already in the chain (that means miners has mined new blocks since you made transactions), you will see something below in spv's logger window.
+```
+SPVClient at ('localhost', 22346):  Requesting Proof from full blockchain node
+SPVClient at ('localhost', 22346):  Transaction exit in the blockchain:)
+```
+- If we resend a transaction that is already in the chain, we will see the following in the miners' logger windows when they receive the new transaction
+```
+Miner at ('localhost', 12346):  New transaction failed resending check based on most updated chain.
+```
+- If we resend a transaction that is not in the chain (unconfirmed), it will be able to pass the check initially. But when miners try to mine new block with the gathered collection of transactions, you will see the following in the miners' logger windows
+```
+Miner at ('localhost', 12346):  Detect conflicting nonce from transactions in collection
+```
 
 #### 5. Double Spend Attack
 - Run `./demo.sh -m 3` to create 3 miners. One of them will be Double Spend (DS).

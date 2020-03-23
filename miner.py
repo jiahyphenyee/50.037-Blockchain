@@ -43,7 +43,7 @@ class MinerListener(Listener):
             # verify it if all transactions inside the block are valid
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
-            if self.node.check_final_balance(transactions):
+            if self.node.check_balance_and_nonce(transactions):
                 success_add = self.node.blockchain.add(blk, proof)
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
@@ -217,7 +217,7 @@ class Miner(Node):
         tx_collection = self.get_tx_pool()
         self.log(f"Number of unconfirmed transactions I'm mining on {len(self.get_tx_pool())}")
 
-        if not self.check_final_balance(tx_collection):
+        if not self.check_balance_and_nonce(tx_collection):
             raise Exception("abnormal transactions!")
             return None
 
@@ -316,21 +316,34 @@ class Miner(Node):
         self.log(f"Found proof = {computed_hash} < TARGET in {end - start} seconds")
         return computed_hash
 
-    def check_final_balance(self, transactions):
+    def check_balance_and_nonce(self, transactions):
         """
             Check balance state if transactions were applied.
             The balance of an account is checked to make sure it is larger than
             or equal to the spending transaction amount.
         """
         balance = self.blockchain.get_balance()
+        tx_nonce = {}
 
         for tx_json in transactions:
             recv_tx = Transaction.deserialize(tx_json)
             # Sender must exist so if it doesn't, return false
+
             sender = stringify_key(recv_tx.sender)
             receiver = stringify_key(recv_tx.receiver)
             if sender not in balance:
                 return False
+            # checking if nonce run into conflict with previous nonce
+            if sender not in tx_nonce:
+                tx_nonce[sender] = []
+            if recv_tx.nonce <= self.blockchain.get_nonce(sender):
+                self.log("Detect conflicting nonce from transactions in chain!")
+                return False
+            elif recv_tx.nonce in tx_nonce[sender]:
+                self.log("Detect conflicting nonce from transactions in collection")
+                return False
+            else:
+                tx_nonce[sender].append(recv_tx.nonce)
             # Create new account for receiver if it doesn't exist
             if receiver not in balance:
                 balance[receiver] = 0
@@ -341,6 +354,7 @@ class Miner(Node):
                 print("Negative balance can exist!")
                 return False
         return True
+
 
 
 
@@ -398,7 +412,7 @@ class Miner(Node):
             self.log(f"mining on block height of {self.blockchain.last_node.block.blk_height} ....\n....\n")
             
             tx_collection = self.get_tx_pool()
-            if not self.check_final_balance(tx_collection):
+            if not self.check_balance_and_nonce(tx_collection):
                 raise Exception("abnormal transactions!")
 
             new_block, prev_block = self.create_new_block(tx_collection)

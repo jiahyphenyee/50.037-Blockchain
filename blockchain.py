@@ -220,7 +220,7 @@ class Blockchain:
                     public_keys_nonce[sender_string] += 1
         ## stringified public key
         if public_key not in public_keys_nonce.keys():
-            return 0
+            return -1
         else:
             return public_keys_nonce[public_key]
 

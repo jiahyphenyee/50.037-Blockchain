@@ -79,6 +79,7 @@ class SPVClient(Node):
     def make_transaction(self, receiver, amount, comment=""):
         """Create a new transaction"""
         self.update_my_transactions()
+        self.log(f"my number of unconfirmed transaction = {len(self.my_unconfirmed_txn)}")
 
         if self.balance >= amount:
             tx = Transaction.new(sender=self._keypair[1],
@@ -119,9 +120,16 @@ class SPVClient(Node):
         return reply
 
     def update_my_transactions(self):
-        for tx_json in self.my_unconfirmed_txn:
-            if self.verify_user_transaction(tx_json):
-                self.my_unconfirmed_txn.remove(tx_json)
+        added_transaction = []
+        for i in range(len(self.my_unconfirmed_txn)):
+            if self.verify_user_transaction(self.my_unconfirmed_txn[i]):
+                self.log(f" Transaction {i} is already in the chain!")
+                added_transaction.append(self.my_unconfirmed_txn[i])
+            else:
+                self.log(f"Transaction {i} is not in the chain!")
+        for tx_json in added_transaction:
+            self.my_unconfirmed_txn.remove(tx_json)
+        self.log(f"My current unconfirmed transaction = {self.my_unconfirmed_txn}")
 
     def verify_user_transaction(self, tx_json):
         """Verify that transaction is in blockchain"""

@@ -59,7 +59,6 @@ class PlayerPanel(wx.Panel):
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
 
         if type == "m":
-            self.balance_label = wx.StaticText(self, label='Balance:  ', pos=(200, 20))
             self.btn_mine = wx.Button(self, label='Start Mining', pos=(20, 60))
             self.btn_mine.id = START_MINE
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
@@ -69,7 +68,7 @@ class PlayerPanel(wx.Panel):
             self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(200, 100))
             self.btn_dssetup.id = SETUP_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
-            self.btn_dsstart = wx.Button(self, label='Setup DS', pos=(200, 150))
+            self.btn_dsstart = wx.Button(self, label='DS Mine', pos=(200, 150))
             self.btn_dsstart.id = START_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
 

@@ -470,22 +470,29 @@ class SelfishMinerListener(Listener):
                 elif delta_previous == 1:
                     self.node.broadcast_blk(self.node.private_blockchain.last_node.block,
                                             self.node.private_blockchain.last_node.block.compute_hash())
+                    self.node.blockchain.add(self.node.private_blockchain.last_node.block,
+                                             self.node.private_blockchain.last_node.block.compute_hash())
                 elif delta_previous == 2:
 
                     blks = self.node.private_blockchain.get_blks()
                     for i in range(self.node.privateBranchLen - 1, -1, -1):
-                        self.node.broadcast_blk(blks[i],blk[i].compute_hash)
+                        self.node.broadcast_blk(blks[i], blk[i].compute_hash())
+                        self.node.blockchain.add(blks[i], blk[i].compute_hash())
                 else:
                     last_node = self.node.private_blockchain.last_node
                     for i in range(self.node.privateBranchLen):
                         last_node = last_node.previous
                     self.node.broadcast_blk(last_node.block, last_node.block.compute_hash())
+                    self.node.blockchain.add(last_node.block, last_node.block.compute_hash())
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
                         self.node.unconfirmed_transactions.remove(tx)
                 self.node.log(f"Added a new block received: {success_add} with {len(transactions)} transactions")
-                self.node.blockchain.print()
-                self.node.private_blockchain.print()
+                self.node.log("Public Blockchain")
+                self.node.log(self.node.blockchain.print())
+                self.node.log("Private Blockchain")
+                self.node.log(self.node.private_blockchain.print())
+
             else:
                 self.node.log("Invalid transactions in the new block received! ")
             self.node.stop_mine.clear()
@@ -655,7 +662,7 @@ class SelfishMiner(Node):
             raise Exception("abnormal transactions!")
             return None
 
-        new_block, prev_block = self.create_new_block(tx_collection)
+        new_block = self.create_new_block(tx_collection)
         proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
             return None
@@ -670,6 +677,7 @@ class SelfishMiner(Node):
             broadcast_blks = self.private_blockchain.get_blks()
             for i in range(self.privateBranchLen - 1, -1, -1):
                 self.broadcast_blk(broadcast_blks[i], broadcast_blks[i].compute_hash())
+                self.blockchain.add(broadcast_blks[i], broadcast_blks[i].compute_hash())
             self.privateBranchLen = 0
         # self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
@@ -678,10 +686,13 @@ class SelfishMiner(Node):
                     |  block  |
                     |---------|
         """)
+        print("Public Blockchain")
         self.blockchain.print()
+        print("Private Blockchain")
+        self.private_blockchain.print()
 
 
-        return new_block, prev_block
+        return new_block
     """ Mining """
 
     #

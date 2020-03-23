@@ -14,7 +14,7 @@ finish() {
 
 trap finish SIGHUP SIGINT SIGTERM
 
-while getopts "hm:s:" OPT; do
+while getopts "hm:s:f:" OPT; do
   case $OPT in
     m) # Set miner count.
       miner_count=$OPTARG ;;

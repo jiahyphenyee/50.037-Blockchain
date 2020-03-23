@@ -10,8 +10,9 @@
 ### Run GUI Demo
 - After cloning/downloading this repo, open your terminal and cd to the root folder of this project
 - `demo.sh` is our file for running the demo
-- -m will Set miner number
-- -s will Set SPV client number
+- -m will set miner number
+- -s will set SPV client number
+- -f will set selfish miner number
 - e.g. run `./demo.sh -m 2 -s 1` to start 2 miners and 1 spv client
 
 

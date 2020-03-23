@@ -105,10 +105,7 @@ class Blockchain:
           in the chain match.
         """
         # if previous_block is not None:
-        print(self.nodes)
         for node in self.nodes:
-
-            print(node.block)
             if node.block.compute_hash() == block.previous_hash:
                 parent_node = node
                 break;

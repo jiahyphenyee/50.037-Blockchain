@@ -54,7 +54,7 @@ class PlayerPanel(wx.Panel):
         self.btn_join.id = JOIN_NETWORK
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_join)
 
-        self.btn_balance = wx.Button(self, label='Balance Update', pos=(200, 20))
+        self.btn_balance = wx.Button(self, label='Get Updated Balance', pos=(200, 20))
         self.btn_balance.id = UPDATE_BAL
         self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_balance)
         self.balance_value = wx.StaticText(self, label='0', pos=(200, 60))
@@ -66,10 +66,10 @@ class PlayerPanel(wx.Panel):
             self.title = f"Miner at port {sys.argv[1]}"
 
             """DS Miner Functions"""
-            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(200, 100))
+            self.btn_dssetup = wx.Button(self, label='Start DS', pos=(220, 150))
             self.btn_dssetup.id = SETUP_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
-            self.btn_dsstart = wx.Button(self, label='DS Mine', pos=(200, 150))
+            self.btn_dsstart = wx.Button(self, label='DS Mine', pos=(220, 180))
             self.btn_dsstart.id = START_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
         if type == "f":

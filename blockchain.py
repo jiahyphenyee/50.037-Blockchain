@@ -304,6 +304,8 @@ if __name__ == "__main__":
     #     print(node.block, node.block.blk_height)
     newChain.print()
     blockchain.print()
+    print(newChain.get_balance())
+    print(blockchain.get_balance())
     # print(verify_proof(s, proofs, block.root))
     # print(block.root)
     # print(block.merkle.get_root().hash)

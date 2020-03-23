@@ -465,7 +465,8 @@ class SelfishMinerListener(Listener):
                 delta_previous = self.node.private_blockchain.length - self.node.blockchain.length
                 success_add = self.node.blockchain.add(blk, proof)
                 if delta_previous == 0:
-                    self.node.private_blockchain = copy.deepcopy(self.node.blockchain)
+                    public_blks = self.node.blockchain.get_blks()
+                    self.node.private_blockchain = Blockchain.new(public_blks)
                     self.node.privateBranchLen = 0
                 elif delta_previous == 1:
                     self.node.broadcast_blk(self.node.private_blockchain.last_node.block,

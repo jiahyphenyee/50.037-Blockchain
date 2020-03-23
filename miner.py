@@ -43,7 +43,7 @@ class MinerListener(Listener):
             # verify it if all transactions inside the block are valid
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
-            if self.node.check_balance_and_nonce(transactions):
+            if self.node.check_balance_and_nonce(transactions, blk.previous_hash):
                 success_add = self.node.blockchain.add(blk, proof)
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
@@ -219,7 +219,7 @@ class Miner(Node):
         tx_collection = self.get_tx_pool()
         self.log(f"Number of unconfirmed transactions I'm mining on {len(self.get_tx_pool())}")
 
-        if not self.check_balance_and_nonce(tx_collection):
+        if not self.check_balance_and_nonce(tx_collection, self.blockchain.last_node.block.hash):
             raise Exception("abnormal transactions!")
             return None
 
@@ -313,13 +313,13 @@ class Miner(Node):
         self.log(f"Found proof = {computed_hash} < TARGET in {end - start} seconds")
         return computed_hash
 
-    def check_balance_and_nonce(self, transactions):
+    def check_balance_and_nonce(self, transactions, blk_hash):
         """
             Check balance state if transactions were applied.
             The balance of an account is checked to make sure it is larger than
             or equal to the spending transaction amount.
         """
-        balance = self.blockchain.get_balance()
+        balance = self.blockchain.get_balance(blk_hash)
         tx_nonce = {}
 
         for tx_json in transactions:
@@ -333,7 +333,7 @@ class Miner(Node):
             # checking if nonce run into conflict with previous nonce
             if sender not in tx_nonce:
                 tx_nonce[sender] = []
-            if recv_tx.nonce <= self.blockchain.get_nonce(sender):
+            if recv_tx.nonce <= self.blockchain.get_nonce(sender, blk_hash):
                 self.log("Detect conflicting nonce from transactions in chain!")
                 return False
             elif recv_tx.nonce in tx_nonce[sender]:

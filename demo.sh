@@ -6,12 +6,6 @@ print_usage() {
   exit 0;
 }
 
-if [[ $UID != 0 ]]; then
-  echo 'Please run script with sudo (for nice):'
-  echo "sudo $0 $*"
-  exit 1
-fi
-
 finish() {
   kill $(jobs -p);
   rm mine_lock;
@@ -26,8 +20,6 @@ while getopts "hm:s:" OPT; do
       miner_count=$OPTARG ;;
     s) # Set SPV client count.
       spv_client_count=$OPTARG ;;
-    d) # Enable double spend.
-      double_spend=true ;;
     f) # enable selfish miner
       selfish_miner_count=$OPTARG ;;
     h | *) # Display help.
@@ -71,7 +63,6 @@ else
       IDS+=($!)
       sleep 1
     done
-
 fi
 
 sleep 2

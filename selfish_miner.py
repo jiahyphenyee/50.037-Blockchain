@@ -60,7 +60,7 @@ class SelfishMinerListener(Listener):
                     last_node = self.node.private_blockchain.last_node
                     for i in range(self.node.privateBranchLen):
                         last_node = last_node.previous
-                    self.node.broadcast_blk(last_node.block,last_node.block.nonce)
+                    self.node.broadcast_blk(last_node.block, last_node.block.nonce)
 
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:

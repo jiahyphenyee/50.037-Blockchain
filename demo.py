@@ -7,6 +7,7 @@ import subprocess
 import wx
 from miner import Miner
 from SPVClient import SPVClient
+from selfish_miner import *
 
 
 APP_EXIT = 1
@@ -125,6 +126,8 @@ class PlayerPanel(wx.Panel):
                 self.node = Miner.new(("localhost", int(sys.argv[1])))
             elif self.type == "s":
                 self.node = SPVClient.new(("localhost", int(sys.argv[1])))
+            elif self.type == "sm"
+                self.node = SelfishMiner.new(('localhost', int(sys,argv[1])))
         elif identifier == START_MINE:
             self.node.mine()
             time.sleep(2)

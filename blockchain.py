@@ -7,6 +7,7 @@ from merkle_tree import *
 from algorithms import *
 import copy
 TARGET = "00000fffffffffff"
+
 class Node:
     def __init__(self, previous, block=Block):
         self.block = block
@@ -29,22 +30,22 @@ class Blockchain:
         self.nodes = [self.root_node]
         self.public_keys_nonce = {}
 
-    # @classmethod
-    # def new(cls, prev_blks):
-    #     blockchain = Blockchain()
-    #     blks = []
-    #     for i in range(len(prev_blks)):
-    #         blk_str = prev_blks[i].deserialize
-    #         block = Block.serialize(blk_str)
-    #         blks.append(block)
-    #     blockchain.root = blks[-1]
-    #     blockchain.root_node = Node(None, block.root)
-    #     blockchain.last_nodes = []
-    #     blockchain.last_nodes.append(blockchain.root_node)
-    #     blockchain.nodes = [blockchain.root_node]
-    #     for i in range(-2, -len(blks) - 1, -1):
-    #         blockchain.add(blks[i],blks[i].nonce)
-    #     return blockchain
+    @classmethod
+    def new(cls, prev_blks):
+        blockchain = cls()
+        blks = []
+        for i in range(len(prev_blks)):
+            blk_str = prev_blks[i].serialize()
+            block = Block.deserialize(blk_str)
+            blks.append(block)
+        blockchain.root = blks[-1]
+        blockchain.root_node = Node(None, blockchain.root)
+        blockchain.last_nodes = []
+        blockchain.last_nodes.append(blockchain.root_node)
+        blockchain.nodes = [blockchain.root_node]
+        for i in range(-2, -len(blks) - 1, -1):
+            blockchain.add(blks[i], blks[i].compute_hash())
+        return blockchain
 
     def create_genesis_block(self):
         """
@@ -104,7 +105,10 @@ class Blockchain:
           in the chain match.
         """
         # if previous_block is not None:
+        print(self.nodes)
         for node in self.nodes:
+
+            print(node.block)
             if node.block.compute_hash() == block.previous_hash:
                 parent_node = node
                 break;
@@ -289,8 +293,9 @@ if __name__ == "__main__":
     # # s = t.serialize()
     proofs, block = blockchain.get_proof(s)
     print(verify_proof(s, proofs, block.merkle.get_root().hash))
-    # blks = blockchain.get_blks()
-    newChain = copy.deepcopy(blockchain)
+    blks = blockchain.get_blks()
+    newChain = Blockchain.new(blks)
+
     screwedUpBlock = Block(transactions,time.time(), newChain.root.hash,miner_public)
     proof = newChain.proof_of_work(screwedUpBlock)
     print(newChain.add(screwedUpBlock, proof))

@@ -45,7 +45,7 @@ class Block:
         dic['transactions'] = self.transactions
         dic['blk_height'] = self.blk_height
         dic['hash'] = self.hash
-        dic['miner'] = stringify_key(self.miner)
+        dic['miner'] = stringify_key(self.miner) if self.miner is not None else None
         serialized = json.dumps(dic)
         return serialized
 
@@ -54,7 +54,8 @@ class Block:
         # Instantiates/Deserializes object from CBOR or JSON string
         deserialized = json.loads(data)
         header = deserialized['header']
-        block = Block(deserialized['transactions'], header['timestamp'], header['prev_hash'], obtain_key_from_string(deserialized['miner']))
+        miner = obtain_key_from_string(deserialized['miner']) if deserialized['miner'] is not None else None
+        block = Block(deserialized['transactions'], header['timestamp'], header['prev_hash'], miner)
         block.nonce = header['nonce']
         block.hash = deserialized['hash']
         block.blk_height = deserialized['blk_height']

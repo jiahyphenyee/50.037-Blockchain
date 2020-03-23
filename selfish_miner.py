@@ -469,22 +469,23 @@ class SelfishMinerListener(Listener):
                     self.node.privateBranchLen = 0
                 elif delta_previous == 1:
                     self.node.broadcast_blk(self.node.private_blockchain.last_node.block,
-                                            self.node.private_blockchain.last_node.block.nonce)
+                                            self.node.private_blockchain.last_node.block.compute_hash())
                 elif delta_previous == 2:
-                    previous_block = self.node.private_blockchain.last_node.previous.block
-                    last_block = self.node.private_blockchain.last_node.block
-                    self.node.broadcast_blk(previous_block, previous_block.nonce)
-                    self.node.broadcast_blk(last_block, last_block.nonce)
+
+                    blks = self.node.private_blockchain.get_blks()
+                    for i in range(self.node.privateBranchLen - 1, -1, -1):
+                        self.node.broadcast_blk(blks[i],blk[i].compute_hash)
                 else:
                     last_node = self.node.private_blockchain.last_node
                     for i in range(self.node.privateBranchLen):
                         last_node = last_node.previous
-                    self.node.broadcast_blk(last_node.block, last_node.block.nonce)
+                    self.node.broadcast_blk(last_node.block, last_node.block.compute_hash())
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
                         self.node.unconfirmed_transactions.remove(tx)
                 self.node.log(f"Added a new block received: {success_add} with {len(transactions)} transactions")
                 self.node.blockchain.print()
+                self.node.private_blockchain.print()
             else:
                 self.node.log("Invalid transactions in the new block received! ")
             self.node.stop_mine.clear()
@@ -668,7 +669,7 @@ class SelfishMiner(Node):
         if (delta_previous ==0 and self.privateBranchLen ==2):
             broadcast_blks = self.private_blockchain.get_blks()
             for i in range(self.privateBranchLen - 1, -1, -1):
-                self.broadcast_blk(broadcast_blks[i], broadcast_blks[i].nonce)
+                self.broadcast_blk(broadcast_blks[i], broadcast_blks[i].compute_hash())
             self.privateBranchLen = 0
         # self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
@@ -753,7 +754,7 @@ class SelfishMiner(Node):
                 return self.hidden_blocks[self.hidden_blocks_num - 1]
 
         else:
-            return self.blockchain.last_node.block
+            return self.private_blockchain.last_node.block
 
     def create_new_block(self, tx_collection):
         last_node = self.get_last_node()
@@ -917,7 +918,7 @@ class SelfishMiner(Node):
 
         for i in range(self.hidden_blocks_num - 1, 0, -1):
             self.log(f"Broadcasting block number {i} out of {self.hidden_blocks_num}")
-            self.broadcast_blk(blocks[i], blocks[i].hash)
+            self.broadcast_blk(blocks[i], blocks[i].compute_hash())
             time.sleep(2)
 
         self.end_ds_attack()

@@ -72,6 +72,19 @@ class PlayerPanel(wx.Panel):
             self.btn_dsstart = wx.Button(self, label='DS Mine', pos=(200, 150))
             self.btn_dsstart.id = START_DS
             self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
+        if type == "f":
+            self.btn_mine = wx.Button(self, label='Start Mining', pos=(20, 60))
+            self.btn_mine.id = START_MINE
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_mine)
+            self.title = f"Selfish Miner at port {sys.argv[1]}"
+
+            """DS Miner Functions"""
+            self.btn_dssetup = wx.Button(self, label='Setup DS', pos=(200, 100))
+            self.btn_dssetup.id = SETUP_DS
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dssetup)
+            self.btn_dsstart = wx.Button(self, label='DS Mine', pos=(200, 150))
+            self.btn_dsstart.id = START_DS
+            self.Bind(wx.EVT_BUTTON, self.OnBtnClick, self.btn_dsstart)
 
         if type == "s":
             self.btn_balance = wx.Button(self, label='Balance Update  ', pos=(200, 20))
@@ -125,7 +138,7 @@ class PlayerPanel(wx.Panel):
                 self.node = Miner.new(("localhost", int(sys.argv[1])))
             elif self.type == "s":
                 self.node = SPVClient.new(("localhost", int(sys.argv[1])))
-            elif self.type == "sm":
+            elif self.type == "f":
                 self.node = SelfishMiner.new(('localhost', int(sys.argv[1])))
         elif identifier == START_MINE:
             self.node.mine()
@@ -137,7 +150,7 @@ class PlayerPanel(wx.Panel):
             if self.type == "s":
                 balance = self.node.request_balance()
                 self.balance_value.SetLabel(str(balance) + "  ")
-            elif self.type == "m":
+            elif self.type == "m" or self.type == "f":
                 self.balance_value.SetLabel(str(self.node.get_own_balance())+"  ")
         elif identifier == VERIFY_TXN:
             txn_no = self.txn_no.GetValue()

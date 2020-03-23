@@ -29,7 +29,7 @@ while getopts "hm:s:" OPT; do
     d) # Enable double spend.
       double_spend=true ;;
     f) # enable selfish miner
-      selfish=true ;;
+      selfish_miner_count=$OPTARG ;;
     h | *) # Display help.
       print_usage ;;
   esac
@@ -61,6 +61,13 @@ else
   for i in $(seq 1 $miner_count)
     do
       python3 demo.py $(($i + 12345)) 'm' &
+      IDS+=($!)
+      sleep 1
+    done
+
+      for i in $(seq 1 $selfish_miner_count)
+    do
+      python3 demo.py $(($i + 32345)) 'f' &
       IDS+=($!)
       sleep 1
     done

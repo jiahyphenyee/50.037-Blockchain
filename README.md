@@ -1,4 +1,6 @@
 # 50.037-Blockchain Project 1
+### Notes
+- the model we used here for SUTDCoin is Account/Balance model.
 
 ### Requirements for running demonstration
 1. Have python3 installed
@@ -42,37 +44,40 @@ Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a
 To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to create 2 miners and 1 spv client.
 - Again, make them join the network to prove their existence and find other peers
 - To be able to create transactions, we need to create coins first. So put the miners to mining.
-- After the miners
-#### 4. Transaction Resending Protection
-#### 5. 51% Attack
-- Install mongodb server community edition from [here](https://www.mongodb.com/download-center/community)
-- create a new database called `isit_database_mongo`
-- make sure mongo server is running on port:27017
-- run `mongod` in any shell
-- create an admin user with username: `isit_database_mongo` password: `password`
+- After a new block is mined and broadcasted, the spv client will receive new header as well. You might receive the following message. Press Get Headers Btn to sync headers with full blockchain node (miner here).
+```
+SPVClient at ('localhost', 22346):  Header with non-existing prev-hash. Do you want to request headers?
+```
+- Now let us pass some money from the miner to a spv client. In the recipient field, we use the port number of the spv client for simplicity. After we fill in the amout, we press Make A Transaction to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
+```
+Miner at ('localhost', 12347):  ======= Receive new transaction from peer
+Miner at ('localhost', 12347):  most recent nonce = 0 vs new nonce = 1
+Miner at ('localhost', 12347):  New transaction passed resending check based on most updated chain.
+Miner at ('localhost', 12347):  1 number of unconfirmed transactions
+```
+- If spv client request balance now, it will not see any increase in balance. So we will make the miners mine again to confirm this transaction. We will be able to see number of transactions in the new block mined.
+```
+`- root
+   `- hash: 000004b55790d78dd21996a3ad9920e6af4bc8adc54017ea367bcde2765bb01d, number of transactions: 0
+      `- hash: 00000e982f3bb572f3af7e0f215acc5f49b6264f85600620e377d6d5e1fc5c45, number of transactions: 1
+```
+- Now when spv client press Update Balance to request for balance, it will be updated.
 
-for the API, go [here](https://docs.mongodb.com/manual/reference/method/)
-To GET data from the database
-- import `from common.util import mongo`
-- use the syntax: `mongo.db.<collection name>.<mongo function>` e.g. `mongo.db.logs.find({})
+#### 4. Transaction Verification and Resending Protection
+- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner. If 
+
+#### 5. Double Spend Attack
+- Run `./demo.sh -m 3` to create 3 miners. One of them will be Double Spend (DS).
+- For each miner, `Join Network` to find peers in the network. Then `Start Mining` for all miners.
+- Select `Start Mining` more than once or create transactions to create and transfer coins.
+- When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.
+- Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement transactions to be added to the forked block.
+- `Start Mining` on all other miners besides the DS to validate the transactions.
+- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain.
+
+The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
 #### 6. Selfish Mining Attack
-- Install MySQL server version 5.7.27 from [here](https://dev.mysql.com/downloads/windows/installer/5.7.html)
-- Create the followint table in existing database:
-```
-CREATE TABLE IF NOT EXISTS `kindle_reviews` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `asin` VARCHAR(255) NOT NULL,
-  `helpful` VARCHAR(255) NOT NULL,
-  `overall` INT(11) NOT NULL,
-  `reviewText` TEXT NOT NULL,
-  `reviewTime` VARCHAR(255) NOT NULL,
-  `reviewerID` VARCHAR(255) NOT NULL,
-  `reviewerName` VARCHAR(255) NOT NULL,
-  `summary` VARCHAR(255) NOT NULL,
-  `unixReviewTime` INT(11) NOT NULL,
-  PRIMARY KEY (`id`));
 
-```
 
 

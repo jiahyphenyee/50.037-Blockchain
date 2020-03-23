@@ -92,7 +92,7 @@ Miner at ('localhost', 12346):  Detect conflicting nonce from transactions in co
 The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
 #### 6. Selfish Mining Attack
-- Run './demo.sh -m 1 -f 1' to create 1 miner and 1 selfish miner
+- Run `./demo.sh -m 1 -f 1` to create 1 miner and 1 selfish miner
 - For each one, 'Join Network' to find peers in the network.
 - Then we can slowly click mine on either the selfish miner or miner to work through the algorithm and see the broadcasting behaviour of the selfish miner when it has mined a block or when the other miner has mined a block
 

@@ -44,8 +44,24 @@ class SelfishMinerListener(Listener):
             blk = Block.deserialize(blk_json)
             transactions = blk.transactions
             if self.node.check_final_balance(transactions):
-                delta_previous = self.node.self.node.blockchain.length
+                delta_previous = self.node.private_blockchain.length - self.node.blockchain.length
                 success_add = self.node.blockchain.add(blk, proof)
+                if delta_previous == 0:
+                    self.node.private_blockchain = copy.deepcopy(self.node.blockchain)
+                    self.node.privateBranchLen = 0
+                elif delta_previous == 1:
+                    self.node.broadcast_blk(self.node.private_blockchain.last_node.block, self.node.private_blockchain.last_node.block.nonce)
+                elif delta_previous == 2:
+                    previous_block = self.node.private_blockchain.last_node.previous.block
+                    last_block = self.node.private_blockchain.last_node.block
+                    self.node.broadcast_blk(previous_block,previous_block.nonce)
+                    self.node.broadcast_blk(last_block,last_block.nonce)
+                else:
+                    last_node = self.node.private_blockchain.last_node
+                    for i in range(self.node.privateBranchLen):
+                        last_node = last_node.previous
+                    self.node.broadcast_blk(last_node.block, last_node.block.nonce)
+
                 for tx in transactions:
                     if tx in self.node.unconfirmed_transactions:
                         self.node.unconfirmed_transactions.remove(tx)
@@ -108,6 +124,7 @@ class SelfishMiner(Node):
         self.unconfirmed_transactions = []  # data yet to get into blockchain
         self.blockchain = Blockchain()
         self.private_blockchain = Blockchain()
+        self.private_blocks = []
         self.my_unconfirmed_txn = list()  # all unconfirmed transactions sent by me
 
         self.stop_mine = threading.Event()  # a indicator for whether to continue mining
@@ -202,16 +219,19 @@ class SelfishMiner(Node):
         new_block, prev_block = self.create_new_block(tx_collection)
         proof = self.proof_of_work(new_block, self.stop_mine)
         if proof is None:
-            delta_previous = self.private_blockchain.last_node.block.blk_height - self.blockchain.last_node.block.blk_height
-            if delta_previous == 0:
-
             return None
-
+        delta_previous = self.private_blockchain.length - self.blockchain.length
         self.private_blockchain.add(new_block, proof)
+
         for tx in tx_collection:
             self.unconfirmed_transactions.remove(tx)
             self.my_unconfirmed_txn.remove(tx)
-
+        self.privateBranchLen += 1
+        if (delta_previous ==0 and self.privateBranchLen ==2):
+            broadcast_blks = self.private_blockchain.get_blks()
+            for i in range(self.privateBranchLen - 1, -1, -1):
+                self.broadcast_blk(broadcast_blks[i], broadcast_blks[i].nonce)
+            self.privateBranchLen = 0
         # self.broadcast_blk(new_block, proof)
         self.log(" Mined a new block +$$$$$$$$")
         print("""
@@ -220,6 +240,7 @@ class SelfishMiner(Node):
                     |---------|
         """)
         self.blockchain.print()
+
 
         return new_block, prev_block
 

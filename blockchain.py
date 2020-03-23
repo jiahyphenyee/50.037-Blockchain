@@ -5,7 +5,7 @@ from block import Block
 from transaction import Transaction
 from merkle_tree import *
 from algorithms import *
-from threading import RLock
+import copy
 TARGET = "00000fffffffffff"
 class Node:
     def __init__(self, previous, block=Block):
@@ -16,7 +16,6 @@ class Node:
 
 class Blockchain:
     difficulty = 5
-    lock = RLock()
 
     def __init__(self):
         """
@@ -29,6 +28,23 @@ class Blockchain:
         self.last_nodes.append(self.root_node)
         self.nodes = [self.root_node]
         self.public_keys_nonce = {}
+
+    # @classmethod
+    # def new(cls, prev_blks):
+    #     blockchain = Blockchain()
+    #     blks = []
+    #     for i in range(len(prev_blks)):
+    #         blk_str = prev_blks[i].deserialize
+    #         block = Block.serialize(blk_str)
+    #         blks.append(block)
+    #     blockchain.root = blks[-1]
+    #     blockchain.root_node = Node(None, block.root)
+    #     blockchain.last_nodes = []
+    #     blockchain.last_nodes.append(blockchain.root_node)
+    #     blockchain.nodes = [blockchain.root_node]
+    #     for i in range(-2, -len(blks) - 1, -1):
+    #         blockchain.add(blks[i],blks[i].nonce)
+    #     return blockchain
 
     def create_genesis_block(self):
         """
@@ -107,8 +123,10 @@ class Blockchain:
         self.nodes.append(current_node)
         # if previous_block is None:
         #     self.last_nodes.remove(parent_node)
-        if parent_node == self.last_node:
-            self.last_nodes.remove(parent_node)
+        for  node in self.last_nodes:
+            if len(node.children) != 0:
+                self.last_nodes.remove(node)
+            # self.last_nodes.remove(parent_node)
         self.last_nodes.append(current_node)
 
         for transaction in block.transactions:
@@ -131,7 +149,7 @@ class Blockchain:
     # def add_new_transaction(self, transaction):
     #     self.unconfirmed_transactions.append(transaction)
 
-    def add(self, new_block, proof, previous_block=None):
+    def add(self, new_block, proof):
         """
         This function serves as an interface to add a new block
          to the blockchain after verifying the proof of work
@@ -158,9 +176,13 @@ class Blockchain:
 
         return added
 
-    def get_blks(self):
+    def get_blks(self, node = None):
+
         blocks = list()
-        last_node = self.last_node
+        if node is None:
+            last_node = self.last_node
+        else:
+            last_node = node
         while last_node.block.hash != self.root.hash:
             blocks.append(last_node.block)
             last_node = last_node.previous
@@ -212,9 +234,7 @@ class Blockchain:
         return balance
 
     def print(self):
-        Blockchain.lock.acquire()
         pprint_tree(self.root_node)
-        Blockchain.lock.release()
 
 def pprint_tree(node, file=None, _prefix="", _last=True):
     print(_prefix, "`- " if _last else "|- ", node.block, sep="", file=file)
@@ -251,12 +271,6 @@ if __name__ == "__main__":
         proof = blockchain.proof_of_work(block)
         print(blockchain.add(block,proof))
         print(block, block.blk_height)
-    screwedUpBlock = Block(transactions,time.time(), blockchain.root.hash,miner_public)
-    proof = blockchain.proof_of_work(screwedUpBlock)
-    print(blockchain.add(screwedUpBlock, proof))
-    print(screwedUpBlock, screwedUpBlock.blk_height)
-    for node in blockchain.last_nodes:
-        print(node.block, node.block.blk_height)
     # print(blockchain.get_blks())
     # print(blockchain.get_blks())
     # print(blockchain.public_keys_nonce)
@@ -275,6 +289,16 @@ if __name__ == "__main__":
     # # s = t.serialize()
     proofs, block = blockchain.get_proof(s)
     print(verify_proof(s, proofs, block.merkle.get_root().hash))
+    # blks = blockchain.get_blks()
+    newChain = copy.deepcopy(blockchain)
+    screwedUpBlock = Block(transactions,time.time(), newChain.root.hash,miner_public)
+    proof = newChain.proof_of_work(screwedUpBlock)
+    print(newChain.add(screwedUpBlock, proof))
+    print(screwedUpBlock, screwedUpBlock.blk_height)
+    # for node in blockchain.last_nodes:
+    #     print(node.block, node.block.blk_height)
+    newChain.print()
+    blockchain.print()
     # print(verify_proof(s, proofs, block.root))
     # print(block.root)
     # print(block.merkle.get_root().hash)

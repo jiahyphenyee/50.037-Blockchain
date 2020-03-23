@@ -43,36 +43,21 @@ To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to c
 - Again, make them join the network to prove their existence and find other peers
 - To be able to create transactions, we need to create coins first. So put the miners to mining.
 - After the miners
-#### 4. Transaction Resending Protection
-#### 5. 51% Attack
-- Install mongodb server community edition from [here](https://www.mongodb.com/download-center/community)
-- create a new database called `isit_database_mongo`
-- make sure mongo server is running on port:27017
-- run `mongod` in any shell
-- create an admin user with username: `isit_database_mongo` password: `password`
 
-for the API, go [here](https://docs.mongodb.com/manual/reference/method/)
-To GET data from the database
-- import `from common.util import mongo`
-- use the syntax: `mongo.db.<collection name>.<mongo function>` e.g. `mongo.db.logs.find({})
+#### 4. Transaction Resending Protection
+
+#### 5. Double Spend Attack
+- Run `./demo.sh -m 2` to create 3 miners. One of them will be Double Spend (DS).
+- For each miner, `Join Network` to find peers in the network. Then `Start Mining` for all miners.
+- Select `Start Mining` more than once or create transactions to create and transfer coins.
+- When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.
+- Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement transactions to be added to the forked block.
+- `Start Mining` on all other miners besides the DS to validate the transactions.
+- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain.
+
+The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
 #### 6. Selfish Mining Attack
-- Install MySQL server version 5.7.27 from [here](https://dev.mysql.com/downloads/windows/installer/5.7.html)
-- Create the followint table in existing database:
-```
-CREATE TABLE IF NOT EXISTS `kindle_reviews` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `asin` VARCHAR(255) NOT NULL,
-  `helpful` VARCHAR(255) NOT NULL,
-  `overall` INT(11) NOT NULL,
-  `reviewText` TEXT NOT NULL,
-  `reviewTime` VARCHAR(255) NOT NULL,
-  `reviewerID` VARCHAR(255) NOT NULL,
-  `reviewerName` VARCHAR(255) NOT NULL,
-  `summary` VARCHAR(255) NOT NULL,
-  `unixReviewTime` INT(11) NOT NULL,
-  PRIMARY KEY (`id`));
 
-```
 
 

@@ -183,13 +183,13 @@ class Blockchain:
 
         return added
 
-    def get_blks(self, block=None):
+    def get_blks(self, block_hash=None):
 
         blocks = list()
-        if block is None:
+        if block_hash is None:
             last_node = self.last_node
         else:
-            last_node = self.get_node_from_block(block)
+            last_node = self.get_node_from_block_hash(block_hash)
         while last_node.block.hash != self.root.hash:
             blocks.append(last_node.block)
             last_node = last_node.previous
@@ -207,9 +207,9 @@ class Blockchain:
         proofs = last_node.block.merkle.get_proof(transaction)
         return proofs, last_node.block
 
-    def get_nonce(self, public_key, block=None):
+    def get_nonce(self, public_key, block_hash=None):
         public_keys_nonce = {}
-        blocks = self.get_blks(block)
+        blocks = self.get_blks(block_hash)
         for block in blocks:
             for transaction in block.transactions:
                 tx = Transaction.deserialize(transaction)
@@ -224,14 +224,14 @@ class Blockchain:
         else:
             return public_keys_nonce[public_key]
 
-    def get_node_from_block(self, block):
+    def get_node_from_block_hash(self, block_hash):
         for node in self.nodes:
-            if node.block.compute_hash() == block.compute_hash():
+            if node.block.compute_hash() == block_hash:
                 return node
         return None
 
-    def get_balance(self, block=None):
-        blocks = self.get_blks(block)
+    def get_balance(self, block_hash=None):
+        blocks = self.get_blks(block_hash)
 
         balance = {}
         for block in blocks:
@@ -294,6 +294,7 @@ if __name__ == "__main__":
         proof = blockchain.proof_of_work(block)
         print(blockchain.add(block,proof))
         print(block, block.blk_height)
+        blockchain.add(block,proof)
     # print(blockchain.get_blks())
     # print(blockchain.get_blks())
     # print(blockchain.public_keys_nonce)
@@ -310,20 +311,22 @@ if __name__ == "__main__":
     # # t = Transaction.new(alice_public, bob_public, 4, 'r', alice_private,
     # #                     blockchain.get_nonce(stringify_key(alice_public)) + 1)
     # # s = t.serialize()
-    proofs, block = blockchain.get_proof(s)
-    print(verify_proof(s, proofs, block.merkle.get_root().hash))
+    # proofs, block = blockchain.get_proof(s)
+    # print(verify_proof(s, proofs, block.merkle.get_root().hash))
     blks = blockchain.get_blks()
     newChain = Blockchain.new(blks)
 
     screwedUpBlock = Block(transactions,time.time(), newChain.root.hash,miner_public)
     proof = newChain.proof_of_work(screwedUpBlock)
     print(newChain.add(screwedUpBlock, proof))
-    print(screwedUpBlock, screwedUpBlock.blk_height)
-    # for node in blockchain.last_nodes:
-    #     print(node.block, node.block.blk_height)
+    # print(screwedUpBlock, screwedUpBlock.blk_height)
+    # # for node in blockchain.last_nodes:
+    # #     print(node.block, node.block.blk_height)
     newChain.print()
     blockchain.print()
-    print(newChain.get_nonce(stringify_key(alice_public),screwedUpBlock))
+    print(newChain.get_balance(screwedUpBlock.compute_hash()))
+    print(blockchain.get_balance())
+    print(newChain.get_nonce(stringify_key(alice_public),screwedUpBlock.compute_hash()))
     print(blockchain.get_nonce(stringify_key(alice_public)))
     # print(verify_proof(s, proofs, block.root))
     # print(block.root)

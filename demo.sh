@@ -56,13 +56,15 @@ else
       IDS+=($!)
       sleep 1
     done
-
+    
+  if [-n "$selfish_miner_count" ]; then
       for i in $(seq 1 $selfish_miner_count)
-    do
-      python3 demo.py $(($i + 32345)) 'f' &
-      IDS+=($!)
-      sleep 1
-    done
+        do
+          python3 demo.py $(($i + 32345)) 'f' &
+          IDS+=($!)
+          sleep 1
+        done
+    fi
 fi
 
 sleep 2

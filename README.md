@@ -1,4 +1,6 @@
 # 50.037-Blockchain Project 1
+### Notes
+- the model we used here for SUTDCoin is Account/Balance model.
 
 ### Requirements for running demonstration
 1. Have python3 installed
@@ -42,12 +44,30 @@ Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a
 To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to create 2 miners and 1 spv client.
 - Again, make them join the network to prove their existence and find other peers
 - To be able to create transactions, we need to create coins first. So put the miners to mining.
-- After the miners
+- After a new block is mined and broadcasted, the spv client will receive new header as well. You might receive the following message. Press Get Headers Btn to sync headers with full blockchain node (miner here).
+```
+SPVClient at ('localhost', 22346):  Header with non-existing prev-hash. Do you want to request headers?
+```
+- Now let us pass some money from the miner to a spv client. In the recipient field, we use the port number of the spv client for simplicity. After we fill in the amout, we press Make A Transaction to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
+```
+Miner at ('localhost', 12347):  ======= Receive new transaction from peer
+Miner at ('localhost', 12347):  most recent nonce = 0 vs new nonce = 1
+Miner at ('localhost', 12347):  New transaction passed resending check based on most updated chain.
+Miner at ('localhost', 12347):  1 number of unconfirmed transactions
+```
+- If spv client request balance now, it will not see any increase in balance. So we will make the miners mine again to confirm this transaction. We will be able to see number of transactions in the new block mined.
+```
+`- root
+   `- hash: 000004b55790d78dd21996a3ad9920e6af4bc8adc54017ea367bcde2765bb01d, number of transactions: 0
+      `- hash: 00000e982f3bb572f3af7e0f215acc5f49b6264f85600620e377d6d5e1fc5c45, number of transactions: 1
+```
+- Now when spv client press Update Balance to request for balance, it will be updated.
 
-#### 4. Transaction Resending Protection
+#### 4. Transaction Verification and Resending Protection
+- We will continue the Resending Protection demonstration from the previous one. To simply demonstration, we have made spv client to keep a list of interested transactions (all the transactions it has made to peers). To verify if a interested transaction is already in the blockchain we can choose the transaction and press verify to request proof from miner. If 
 
 #### 5. Double Spend Attack
-- Run `./demo.sh -m 2` to create 3 miners. One of them will be Double Spend (DS).
+- Run `./demo.sh -m 3` to create 3 miners. One of them will be Double Spend (DS).
 - For each miner, `Join Network` to find peers in the network. Then `Start Mining` for all miners.
 - Select `Start Mining` more than once or create transactions to create and transfer coins.
 - When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.

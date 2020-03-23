@@ -130,6 +130,7 @@ class SPVClient(Node):
         replies = self.broadcast_request(req)
         valid_reply = SPVClient._process_replies(replies)
         if valid_reply is None:
+            self.log(f"Transaction does not exist:(")
             return False
         blk_hash = valid_reply["blk_hash"]
         proof = valid_reply["merkle_path"]
@@ -167,7 +168,6 @@ class SPVClient(Node):
             raise Exception("No miner replies for request.")
         # Assume majority reply is valid
         valid_reply = max(replies, key=replies.count)
-        print(f"valid reply: {valid_reply}")
 
         if valid_reply != "nil":
             return json.loads(valid_reply)

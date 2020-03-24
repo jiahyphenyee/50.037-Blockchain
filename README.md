@@ -49,7 +49,7 @@ Fork resolution is done by checking the nodes in the blockchain with no children
         """
         return self.resolve()
 ```
-Comparing the length of the chains.
+Comparing the length of the chains when carrying out the fork resolution. The resolve() function returns the last_node of the longest chain.
 ```
 def resolve(self):
         idx = -1
@@ -101,13 +101,21 @@ Miner at ('localhost', 12346):  Detect conflicting nonce from transactions in co
 ```
 
 #### 5. Double Spend Attack
-- Run `./demo.sh -m 3` to create 3 miners. One of them will be Double Spend (DS).
+The double spending attack simulation will be carried out with 3 miners where 1 miner will conduct the attack. Having 2 honest miners will allow us to demonstrate block-mining with both normal transactions and double-spent transactions. 1 double-spending miner in this demonstration will be representing a majority group of colluding miners (in real life).
+This simulation will demonstrate these key features:
+1. Miners carry out transactions to add to the transaction pool, including the DS miner.
+2. DS miner attacks after it ensures its transactions are validated in the blockchain.
+3. DS miner then replaces its own previous transactions with double-spends, but keeping the same amount and nonce. It only modifies the receiver to be himself.
+4. DS miner deliberately forks and re-mines on the same block height containing his transactions.
+5. When the DS miner's chain is the longest, the blockchain fork resolves and the double-spent transactions replaces the original payments. DS miner's balance is restored to before his transaction was made + rewards from block mining.
+
+- Run `./demo.sh -m 3` to create 3 miners. 
 - For each miner, `Join Network` to find peers in the network. Then `Start Mining` for all miners.
 - Select `Start Mining` more than once or create transactions to create and transfer coins.
 - When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.
-- Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement transactions to be added to the forked block.
+- Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement double-spend transactions to be added to the forked block.
 - `Start Mining` on all other miners besides the DS to validate the transactions.
-- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain to simulate faster mining of the DS miner compared to honest miners.
+- Then select `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain to simulate faster mining of the DS miner compared to honest miners.
 
 The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 

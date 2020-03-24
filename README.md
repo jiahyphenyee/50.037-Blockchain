@@ -18,13 +18,13 @@
 
 #### 1. Miner Competition and Coin Creation
 To simulate miner competition, we can run `./demo.sh -m 3` to create 3 miners.
-- For each miner, click on Join Network button, this will register the miner at the Address server. They will also be receiving updates on network nodes that are listening and record the peers. You will see following message in their respective loggers.
+- For each miner, click on `Join Network` button, this will register the miner at the Address server. They will also be receiving updates on network nodes that are listening and record the peers. You will see following message in their respective loggers.
 ```
 Miner at ('localhost', 12348):  Join the network
 Miner at ('localhost', 12348):  ======= Receive updates on network nodes
 Miner at ('localhost', 12348):  Peers: []
 ```
-- For each miner, clink on Start Mining button, this will set the miners mining for proof. Once a block is mined, you should see the following line somewhere in the logger of that miner that show you the proof and time spent on mining:
+- For each miner, clink on `Start Mining` button, this will set the miners mining for proof. Once a block is mined, you should see the following line somewhere in the logger of that miner that show you the proof and time spent on mining:
 ```
 Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a7720604c5762b91587890d5a78aeb1 < TARGET in 4.400625944137573 seconds
 ```
@@ -34,12 +34,32 @@ Miner at ('localhost', 12348):  Found proof = 00000522aaafc965668e4c0e5ae034c87a
    `- hash: 00000522aaafc965668e4c0e5ae034c87a7720604c5762b91587890d5a78aeb1, number of transactions: 0
 ```
 
-- Under the Update Balance button, the balance should be updated for the miner who successfully mined the block. If not, please press the Update Balance button to update.
+- Under the `Update Balance` button, the balance should be updated for the miner who successfully mined the block. If not, please press the `Update Balance` button to update.
 - Sometimes Forking may happen if miners mine the block at the same time.
-- For demostration purpose, mining event is only triggered once for one click. If a new block is mined or mining process stopped midway as others found a block, we need to manually press Start Mine button again to continue mining for another block
+- For demostration purpose, mining event is only triggered once for one click. If a new block is mined or mining process stopped midway as others found a block, we need to manually press `Start Mining` button again to continue mining for another block
 
 #### 2. Fork Resolution
-
+Fork resolution is done by checking the nodes in the blockchain with no children, and then comparing which one has the longest chain. This is implemented in Blockchain under last_node property, which fetches the last block of the longest chain.
+```
+@property
+    def last_node(self):
+        """
+        A quick pythonic way to retrieve the most recent block in the chain. Note that
+        the chain will always consist of at least one block (i.e., genesis block)
+        """
+        return self.resolve()
+```
+Comparing the length of the chains.
+```
+def resolve(self):
+        idx = -1
+        last_node = None
+        for node in self.last_nodes:
+            if node.block.blk_height >= idx:
+                idx = node.block.blk_height
+                last_node = node
+        return last_node
+```
 
 #### 3. Miners and SPV Clients payments
 To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to create 2 miners and 1 spv client.
@@ -49,7 +69,7 @@ To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to c
 ```
 SPVClient at ('localhost', 22346):  Header with non-existing prev-hash. Do you want to request headers?
 ```
-- Now let us pass some money from the miner to a spv client. In the recipient field, we use the port number of the spv client for simplicity. After we fill in the amout, we press Make A Transaction to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
+- Now let us pass some money from the miner to a spv client. In the `recipient` field, we use the port number of the spv client for simplicity. After we fill in the `amount`, we press  `Make A Transaction` to send the money. Note that the transaction is not confirmed yet. You should see that both miners receive a unconfirmed transaction. Every time a transaction is received, the miner will verify signature and nonce. (Checking nonce to prevent replay attack)
 ```
 Miner at ('localhost', 12347):  ======= Receive new transaction from peer
 Miner at ('localhost', 12347):  most recent nonce = 0 vs new nonce = 1
@@ -87,12 +107,12 @@ Miner at ('localhost', 12346):  Detect conflicting nonce from transactions in co
 - When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.
 - Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement transactions to be added to the forked block.
 - `Start Mining` on all other miners besides the DS to validate the transactions.
-- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain.
+- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain to simulate faster mining of the DS miner compared to honest miners.
 
 The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
 #### 6. Selfish Mining Attack
-- Run './demo.sh -m 1 -f 1' to create 1 miner and 1 selfish miner
+- Run `./demo.sh -m 1 -f 1` to create 1 miner and 1 selfish miner
 - For each one, 'Join Network' to find peers in the network.
 - Then we can slowly click mine on either the selfish miner or miner to work through the algorithm and see the broadcasting behaviour of the selfish miner when it has mined a block or when the other miner has mined a block
 

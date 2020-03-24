@@ -464,6 +464,7 @@ class Miner(Node):
     def end_ds_attack(self):
         self.log("Ended DS attack")
         self.hidden_blocks_num = 0
+        self.hidden_blocks = list()
         self.fork_block = None
         self.mode = Miner.NORMAL
         self.copy_all_unconfirmed_txn = list()

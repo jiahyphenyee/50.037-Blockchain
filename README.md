@@ -120,9 +120,11 @@ This simulation will demonstrate these key features:
 The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
 #### 6. Selfish Mining Attack
+The selfish mining attack will be simulated with one normal miner and one selfish miner. The selfish miner will deliberately hide and not broadcast the block it has mined, unless the public chain is the same length or is catching up to its length. The behaviour can be better witnessed in the simulation which can be ran via the instructions below.
 - Run `./demo.sh -m 1 -f 1` to create 1 miner and 1 selfish miner
 - For each one, 'Join Network' to find peers in the network.
-- Then we can slowly click mine on either the selfish miner or miner to work through the algorithm and see the broadcasting behaviour of the selfish miner when it has mined a block or when the other miner has mined a block
+- Then we can slowly click mine on either the selfish miner or miner to work through the algorithm and see the broadcasting behaviour of the selfish miner when it has mined a block or when the other miner has mined a block.
+- The block broadcasted and the public and private chain is printed in the log of each miner for easy reference of the behaviour
 
 
 

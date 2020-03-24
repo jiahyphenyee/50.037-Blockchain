@@ -49,6 +49,17 @@ Fork resolution is done by checking the nodes in the blockchain with no children
         """
         return self.resolve()
 ```
+Comparing the length of the chains.
+```
+def resolve(self):
+        idx = -1
+        last_node = None
+        for node in self.last_nodes:
+            if node.block.blk_height >= idx:
+                idx = node.block.blk_height
+                last_node = node
+        return last_node
+```
 
 #### 3. Miners and SPV Clients payments
 To simulate Miner and SPV client payments, we can run `./demo.sh -m 2 -s 1` to create 2 miners and 1 spv client.
@@ -96,7 +107,7 @@ Miner at ('localhost', 12346):  Detect conflicting nonce from transactions in co
 - When miners have sufficient coins to make transactions, create a few transactions. The chosen DS miner must create at least one transaction.
 - Select `Start DS` to notify miner to conduct the attack. The miner will prepare the replacement transactions to be added to the forked block.
 - `Start Mining` on all other miners besides the DS to validate the transactions.
-- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain.
+- Then `DS Mine` by the DS miner. Each click mines 1 block. Repeat till the DS private chain is longer than the public chain to simulate faster mining of the DS miner compared to honest miners.
 
 The DS Miner will then broadcast the blocks to all other miners. The balance of DS miner should reflect that the previous transaction has been invalidated. He will also receive the rewards of the blocks he mined.
 
